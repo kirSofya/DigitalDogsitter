@@ -1,0 +1,6 @@
+com\dogs\dogsitters\OperationsUser.class
+com\dogs\dogsitters\ApplicationProperties.class
+com\dogs\dogsitters\Controllers.class
+com\dogs\dogsitters\Service.class
+com\dogs\dogsitters\DogsittersApplication.class
+com\dogs\dogsitters\ServletInitializer.class
