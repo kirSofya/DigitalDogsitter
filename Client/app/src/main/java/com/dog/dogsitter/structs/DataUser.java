@@ -6,4 +6,6 @@ import android.graphics.Bitmap;
 public class DataUser {
     public int Id, Age;
     public String Name, DateBirth, Email, Phone;
+    public double Rating;
 }
+
