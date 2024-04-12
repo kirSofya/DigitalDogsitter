@@ -3,6 +3,7 @@ package com.dog.dogsitter;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.constraintlayout.widget.ConstraintLayout;
 
+import android.annotation.SuppressLint;
 import android.app.AlertDialog;
 import android.app.ProgressDialog;
 import android.content.DialogInterface;
@@ -12,6 +13,8 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.media.Image;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Message;
 import android.util.DisplayMetrics;
 import android.view.Display;
 import android.view.View;
@@ -22,10 +25,21 @@ import android.widget.TableRow;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.dog.dogsitter.structs.DataUser;
+import com.dog.dogsitter.structs.FavoritePlace;
 import com.loopj.android.http.AsyncHttpClient;
 import com.loopj.android.http.AsyncHttpResponseHandler;
+import com.loopj.android.http.JsonHttpResponseHandler;
 import com.loopj.android.http.RequestParams;
 import com.yandex.mapkit.MapKitFactory;
+
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import java.util.ArrayList;
+
+import cz.msebera.android.httpclient.Header;
 
 public class MainActivity extends AppCompatActivity {
     TableRow TableRowSignIn, TableRowReg, TableRowFindDogsitters, TableRowData, TableRowMyDogs, TableRowMyArticles, TableRowArticles;
@@ -142,6 +156,7 @@ public class MainActivity extends AppCompatActivity {
         ButtonDogsitters.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
+                Service.FlagUpdate=false;
                 Intent intent = new Intent(MainActivity.this, DogsittersActivity.class);
                 startActivity(intent);
             }
