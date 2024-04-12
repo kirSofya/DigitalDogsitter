@@ -183,4 +183,29 @@ public class Controllers {
         headers.add("Content-Type", "application/json; charset=utf-8");
         return new ResponseEntity<String>(result.toString(), headers, HttpStatus.OK);
     }
+    //получение списка координат избранных мест
+    @RequestMapping(value = { "/GetFavoritePlacesController" }, method = RequestMethod.POST)
+    public ResponseEntity<String> GetFavoritePlacesController(@RequestParam(defaultValue="0") int id_user) {
+        JSONObject result=ClUser.GetListFavoritePlaces(id_user);
+        HttpHeaders headers = new HttpHeaders();
+        headers.add("Content-Type", "application/json; charset=utf-8");
+        return new ResponseEntity<String>(result.toString(), headers, HttpStatus.OK);
+    }
+    //добавление или удаление избранного места
+    @RequestMapping(value = { "/DoFavoritePlaceController" }, method = RequestMethod.GET)
+    public ResponseEntity<String> DoFavoritePlaceController(@RequestParam(defaultValue="true") boolean favorite, @RequestParam(defaultValue="0") int id_user,
+                                                            @RequestParam(defaultValue="0.0") double lat, @RequestParam(defaultValue="0.0") double lng) {
+        ClUser.DoFavoritePlace(favorite, id_user, lat, lng);
+        HttpHeaders headers = new HttpHeaders();
+        headers.add("Content-Type", "application/json; charset=utf-8");
+        return new ResponseEntity<String>("", headers, HttpStatus.OK);
+    }
+    //установка оценки догситтеру
+    @RequestMapping(value = { "/DoRatingDogsitterController" }, method = RequestMethod.POST)
+    public ResponseEntity<String> DoRatingDogsitterController(@RequestParam(defaultValue="0") int id_dogsitter, @RequestParam(defaultValue="0") int rating) {
+        JSONObject result=ClUser.DoRatingDogsitter(id_dogsitter, rating);
+        HttpHeaders headers = new HttpHeaders();
+        headers.add("Content-Type", "application/json; charset=utf-8");
+        return new ResponseEntity<String>(result.toString(), headers, HttpStatus.OK);
+    }
 }
