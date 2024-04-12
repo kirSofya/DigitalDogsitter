@@ -8,11 +8,14 @@ import android.os.Build;
 import android.os.ParcelFileDescriptor;
 import android.util.Base64;
 
+import com.dog.dogsitter.structs.FavoritePlace;
+
 import java.io.ByteArrayOutputStream;
 import java.io.FileDescriptor;
 import java.io.IOException;
 import java.sql.Date;
 import java.time.LocalDate;
+import java.util.List;
 
 //класс сервисных операций и общих данных
 public class Service {
@@ -21,6 +24,7 @@ public class Service {
     public static int ScreenWidth, ScreenHeight;//ширина и высота экрана
     public static String UrlServer="http://82.146.55.27";//адрес сервера
     public static Boolean FlagUpdate;//флаг для обновления списков
+    public static List<FavoritePlace> ListFavoritePlaces;//список координат избранных мест
     //масштабирование изображения
     public static Bitmap GetResizedBitmap(Bitmap bm, int newWidth, int newHeight) {
         int width = bm.getWidth();
