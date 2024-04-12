@@ -61,7 +61,7 @@ public class OperationsUser {
         return result;
     }
     //регистрация нового пользователя
-    public int RegNewUser(String email, String password, String date_birth, Boolean dogsitter) throws SQLException {
+    public int RegNewUser(String email, String password, String date_birth, boolean dogsitter) throws SQLException {
         Connection conn = null;
         PreparedStatement stmt = null;
         ResultSet rs = null;
@@ -116,6 +116,7 @@ public class OperationsUser {
                 if(rs.getString(7)!=null)result.put("about", rs.getString(7));
                 else result.put("about", "");
                 result.put("password", rs.getString(8));
+                result.put("rating", GetRatingUser(conn, id_user));
             }
             rs.close();
             stmt.close();
@@ -131,7 +132,7 @@ public class OperationsUser {
         return result;
     }
     //сохранение личных данных пользователя
-    public String SaveDataUser(int id_user, String name, String date_birth, String email, String password, String phone, String about, Boolean dogsitter, String photo){
+    public String SaveDataUser(int id_user, String name, String date_birth, String email, String password, String phone, String about, boolean dogsitter, String photo){
         Connection conn = null;
         PreparedStatement stmt = null;
         ResultSet rs = null;
@@ -609,10 +610,112 @@ public class OperationsUser {
                 obj.put("age", Service.GetAge(rs.getDate(3)));
                 obj.put("email", rs.getString(4));
                 obj.put("phone", rs.getString(5));
+                obj.put("rating", GetRatingUser(conn, rs.getInt(1)));
                 array.put(obj);
             }
             rs.close();stmt.close();
             result.put("array", array);
+            conn.close();
+        } catch (SQLException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        } catch (ClassNotFoundException e) {
+            throw new RuntimeException(e);
+        } catch (JSONException e) {
+            throw new RuntimeException(e);
+        }
+        return result;
+    }
+    //получение рейтинга догситтера
+    private double GetRatingUser(Connection conn, int id_user){
+        double result=0;
+        PreparedStatement stmt = null;
+        ResultSet rs = null;
+        int count=0;
+        double sum=0;
+        try {
+            conn = Service.GetConnection();
+            stmt = conn.prepareStatement("SELECT rating FROM rating_users WHERE id_user=?");
+            stmt.setInt(1, id_user);
+            rs = stmt.executeQuery();
+            while (rs.next()){
+                sum+=rs.getInt(1);
+                count++;
+            }
+            if(count>0)result = sum / count;
+            rs.close();stmt.close();
+        } catch (SQLException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        } catch (ClassNotFoundException e) {
+            throw new RuntimeException(e);
+        }
+        return result;
+    }
+    //получение списка координат избранных мест
+    public JSONObject GetListFavoritePlaces(int id_user){
+        JSONObject result=new JSONObject();
+        JSONArray array=new JSONArray();
+        Connection conn = null;
+        PreparedStatement stmt = null;
+        ResultSet rs = null;
+        try {
+            conn = Service.GetConnection();
+            stmt = conn.prepareStatement("SELECT lat,lng FROM favorite_places WHERE id_user=?");
+            stmt.setInt(1, id_user);
+            rs = stmt.executeQuery();
+            while(rs.next()){
+                JSONObject obj=new JSONObject();
+                obj.put("lat", rs.getDouble(1));
+                obj.put("lng", rs.getDouble(2));
+                array.put(obj);
+            }
+            rs.close();stmt.close();
+            result.put("array", array);
+            conn.close();
+        } catch (SQLException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        } catch (ClassNotFoundException e) {
+            throw new RuntimeException(e);
+        } catch (JSONException e) {
+            throw new RuntimeException(e);
+        }
+        return result;
+    }
+    //добавление или изменение избранного места в базе данных
+    public void DoFavoritePlace(boolean favorite, int id_user, double lat, double lng){
+        Connection conn = null;
+        PreparedStatement stmt = null;
+        ResultSet rs = null;
+        try {
+            conn = Service.GetConnection();
+            if(favorite) stmt = conn.prepareStatement("INSERT INTO favorite_places (id_user,lat,lng)VALUES(?,?,?)");
+            else stmt = conn.prepareStatement("DELETE FROM favorite_places WHERE id_user=? AND lat=? AND lng=?");
+            stmt.setInt(1, id_user);
+            stmt.setDouble(2, lat);
+            stmt.setDouble(3, lng);
+            stmt.execute();stmt.close();
+            conn.close();
+        } catch (SQLException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        } catch (ClassNotFoundException e) {
+            throw new RuntimeException(e);
+        }
+    }
+    //установка рейтинга догситтеру
+    public JSONObject DoRatingDogsitter(int id_dogsitter, int rating){
+        JSONObject result=new JSONObject();
+        Connection conn = null;
+        PreparedStatement stmt = null;
+        try {
+            conn = Service.GetConnection();
+            stmt = conn.prepareStatement("INSERT INTO rating_users (id_user,rating)VALUES(?,?)");
+            stmt.setInt(1, id_dogsitter);
+            stmt.setInt(2, rating);
+            stmt.execute();stmt.close();
+            result.put("rating", GetRatingUser(conn, id_dogsitter));
             conn.close();
         } catch (SQLException e) {
             // TODO Auto-generated catch block
