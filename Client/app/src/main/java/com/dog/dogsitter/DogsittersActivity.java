@@ -51,6 +51,12 @@ public class DogsittersActivity extends AppCompatActivity {
         getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN);
         GetListDogsitters();
     }
+    //событие при активизации активности
+    @Override
+    protected void onStart(){
+        super.onStart();
+        if(Service.FlagUpdate)GetListDogsitters();
+    }
     //получение списка догситтеров
     private void GetListDogsitters(){
         ProgressDialog pd;
@@ -90,6 +96,7 @@ public class DogsittersActivity extends AppCompatActivity {
                                 data.Age=obj.getInt("age");
                                 data.Email=obj.getString("email");
                                 data.Phone=obj.getString("phone");
+                                data.Rating=obj.getDouble("rating");
                                 ListDogsitters.add(data);
                             }
                             Message msg=h.obtainMessage();
@@ -142,6 +149,7 @@ public class DogsittersActivity extends AppCompatActivity {
             TextView textViewAge=convertView.findViewById(R.id.textViewAgeListDogsitters);
             TextView textViewEmail=convertView.findViewById(R.id.textViewEmailListDogsitters);
             TextView textViewPhone=convertView.findViewById(R.id.textViewPhoneListDogsitters);
+            TextView textViewRating=convertView.findViewById(R.id.textViewRatingDogsitters);
             FloatingActionButton fabAboutUser=convertView.findViewById(R.id.fabAboutUserListDogsitters);
             DataUser data=ListDogsitters.get(position);
             textViewName.setText("ФИО: "+data.Name);
@@ -149,11 +157,13 @@ public class DogsittersActivity extends AppCompatActivity {
             textViewAge.setText("Возраст: "+data.Age);
             textViewEmail.setText("Email: "+data.Email);
             textViewPhone.setText("Телефон: "+data.Phone);
+            textViewRating.setText("Рейтинг: "+String.format("%.2f", data.Rating));
             fabAboutUser.setTag(data.Id);
             //подробная информация о догситтере
             fabAboutUser.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View view) {
+                    Service.FlagUpdate=false;
                     Intent intent = new Intent(DogsittersActivity.this, AboutUserActivity.class);
                     intent.putExtra("IdUser", (int)view.getTag());
                     startActivity(intent);
