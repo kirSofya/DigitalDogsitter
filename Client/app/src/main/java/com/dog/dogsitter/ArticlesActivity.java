@@ -41,6 +41,63 @@ public class ArticlesActivity extends AppCompatActivity {
     ListView ListViewArticles;
     List<DataArticle> ListArticles;//список статей
     AdapterArticles Adapter;
+
+    View.OnClickListener ButtonSearchOnClickListener = new View.OnClickListener() {
+        @Override
+        public void onClick(View view) {
+            SearchArticles();
+        }
+    };
+
+    JsonHttpResponseHandler SearchArticlesControllerPost = new JsonHttpResponseHandler() {
+        @Override
+        public void onSuccess(int statusCode, Header[] headers, JSONObject response) {
+            final Handler h = new Handler() {//слушатель ответа
+                public void handleMessage(android.os.Message msg) {
+//                    pd.dismiss();
+                    Adapter = new AdapterArticles(ArticlesActivity.this);
+                    ListViewArticles.setAdapter(Adapter);
+                };
+            };
+            Thread t = new Thread(new Runnable() {
+                @SuppressLint("Range")
+                public void run() {
+                    try {
+                        JSONArray array=response.getJSONArray("array");
+                        ListArticles=new ArrayList<>();
+                        DataArticle data;
+                        for(int i=0;i<array.length();i++){
+                            JSONObject obj=array.getJSONObject(i);
+                            data=new DataArticle();
+                            data.Id=obj.getInt("id");
+                            data.IdUser= obj.getInt("id_user");
+                            data.DateText=obj.getString("date");
+                            data.Title=obj.getString("title");
+                            data.InfoUser=obj.getString("user");
+                            data.Description=obj.getString("description");
+                            ListArticles.add(data);
+                        }
+                        Message msg=h.obtainMessage();
+                        Bundle bundle = new Bundle();
+                        bundle.putString("result", "");
+                        msg.setData(bundle);
+                        h.sendMessage(msg);
+                    } catch (JSONException e) {
+                        e.printStackTrace();
+                    }
+                }
+            });
+            t.start();
+        }
+
+        @Override
+        public void onFailure(int statusCode, Header[] headers, String res, Throwable t) {
+//            pd.dismiss();
+            Toast toast = Toast.makeText(getApplicationContext(), "Произошла ошибка.", Toast.LENGTH_SHORT);
+            toast.show();
+        }
+    };
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -52,12 +109,7 @@ public class ArticlesActivity extends AppCompatActivity {
         // убираем верхнюю строку где время и уровень заряда батареи
         getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN);
         //нажата кнопка 'Найти'
-        ButtonSearch.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                SearchArticles();
-            }
-        });
+        ButtonSearch.setOnClickListener(ButtonSearchOnClickListener);
         SearchArticles();
     }
     //поиск статей
@@ -76,57 +128,30 @@ public class ArticlesActivity extends AppCompatActivity {
         pd.show();
         //отправка данных на сервер
         AsyncHttpClient client = new AsyncHttpClient();
-        client.post(Service.UrlServer+"/SearchArticlesController", params, new JsonHttpResponseHandler() {
-            @Override
-            public void onSuccess(int statusCode, Header[] headers, JSONObject response) {
-                final Handler h = new Handler() {//слушатель ответа
-                    public void handleMessage(android.os.Message msg) {
-                        pd.dismiss();
-                        Adapter = new AdapterArticles(ArticlesActivity.this);
-                        ListViewArticles.setAdapter(Adapter);
-                    };
-                };
-                Thread t = new Thread(new Runnable() {
-                    @SuppressLint("Range")
-                    public void run() {
-                        try {
-                            JSONArray array=response.getJSONArray("array");
-                            ListArticles=new ArrayList<>();
-                            DataArticle data;
-                            for(int i=0;i<array.length();i++){
-                                JSONObject obj=array.getJSONObject(i);
-                                data=new DataArticle();
-                                data.Id=obj.getInt("id");
-                                data.IdUser= obj.getInt("id_user");
-                                data.DateText=obj.getString("date");
-                                data.Title=obj.getString("title");
-                                data.InfoUser=obj.getString("user");
-                                data.Description=obj.getString("description");
-                                ListArticles.add(data);
-                            }
-                            Message msg=h.obtainMessage();
-                            Bundle bundle = new Bundle();
-                            bundle.putString("result", "");
-                            msg.setData(bundle);
-                            h.sendMessage(msg);
-                        } catch (JSONException e) {
-                            e.printStackTrace();
-                        }
-                    }
-                });
-                t.start();
-            }
-
-            @Override
-            public void onFailure(int statusCode, Header[] headers, String res, Throwable t) {
-                pd.dismiss();
-                Toast toast = Toast.makeText(getApplicationContext(), "Произошла ошибка.", Toast.LENGTH_SHORT);
-                toast.show();
-            }
-        });
+        client.post(Service.UrlServer+"/SearchArticlesController", params, SearchArticlesControllerPost);
+        pd.dismiss();
     }
     public class AdapterArticles extends BaseAdapter {
         private LayoutInflater mLayoutInflater;
+
+        View.OnClickListener fabDescriptionOnClickListener = new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                Service.FlagUpdate=false;
+                Intent intent = new Intent(ArticlesActivity.this, DescriptionArticleActivity.class);
+                intent.putExtra("IdArticle", (int)view.getTag());
+                startActivity(intent);
+            }
+        };
+
+        View.OnClickListener fabUserOnClickListener = new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                Intent intent = new Intent(ArticlesActivity.this, AboutUserActivity.class);
+                intent.putExtra("IdUser", (int)view.getTag());
+                startActivity(intent);
+            }
+        };
 
         public AdapterArticles(Context context) {
             mLayoutInflater = LayoutInflater.from(context);
@@ -162,25 +187,10 @@ public class ArticlesActivity extends AppCompatActivity {
             textViewDescription.setText(data.Description);
             fabDescription.setTag(data.Id);
             //подробная информация о статье
-            fabDescription.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View view) {
-                    Service.FlagUpdate=false;
-                    Intent intent = new Intent(ArticlesActivity.this, DescriptionArticleActivity.class);
-                    intent.putExtra("IdArticle", (int)view.getTag());
-                    startActivity(intent);
-                }
-            });
+            fabDescription.setOnClickListener(fabDescriptionOnClickListener);
             fabUser.setTag(data.IdUser);
             //редактирование данных по статье
-            fabUser.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View view) {
-                    Intent intent = new Intent(ArticlesActivity.this, AboutUserActivity.class);
-                    intent.putExtra("IdUser", (int)view.getTag());
-                    startActivity(intent);
-                }
-            });
+            fabUser.setOnClickListener(fabUserOnClickListener);
             return convertView;
         }
     }

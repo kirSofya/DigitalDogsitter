@@ -24,6 +24,88 @@ public class AddEditArticleActivity extends AppCompatActivity {
     EditText EditTextName, EditTextDescription;
     Button ButtonAddEdit;
     int Oper, IdArticle;
+
+    AsyncHttpResponseHandler GetArticleUserControllerPost = new AsyncHttpResponseHandler() {
+        @Override
+        public void onStart() {
+
+        }
+
+        @Override
+        public void onSuccess(int statusCode, cz.msebera.android.httpclient.Header[] headers, byte[] responseBody) {
+//            pd.dismiss();
+            String response=new String(responseBody);
+            response=response.trim();
+            try {
+                JSONObject obj=new JSONObject(response);
+                EditTextName.setText(obj.getString("title"));
+                EditTextDescription.setText(obj.getString("description"));
+            } catch (JSONException e) {
+                throw new RuntimeException(e);
+            }
+        }
+
+        @Override
+        public void onFailure(int statusCode, cz.msebera.android.httpclient.Header[] headers, byte[] responseBody, Throwable error) {
+//            pd.dismiss();
+            Toast toast = Toast.makeText(getApplicationContext(), "Произошла ошибка.", Toast.LENGTH_SHORT);
+            toast.show();
+        }
+    };
+
+    AsyncHttpResponseHandler AddEditArticleControllerPost = new AsyncHttpResponseHandler() {
+        @Override
+        public void onStart() {
+
+        }
+
+        @Override
+        public void onSuccess(int statusCode, cz.msebera.android.httpclient.Header[] headers, byte[] responseBody) {
+//            pd.dismiss();
+            Service.FlagUpdate=true;
+            if(Oper==1)Toast.makeText(getApplicationContext(), "Добавление данных прошло успешно.", Toast.LENGTH_SHORT).show();
+            else Toast.makeText(getApplicationContext(), "Изменение данных прошло успешно.", Toast.LENGTH_SHORT).show();
+            finish();
+        }
+
+        @Override
+        public void onFailure(int statusCode, cz.msebera.android.httpclient.Header[] headers, byte[] responseBody, Throwable error) {
+//            pd.dismiss();
+            Toast toast = Toast.makeText(getApplicationContext(), "Произошла ошибка.", Toast.LENGTH_SHORT);
+            toast.show();
+        }
+    };
+
+    View.OnClickListener ButtonAddEditOnClickListener = new View.OnClickListener() {
+        @Override
+        public void onClick(View view) {
+            if(CheckCorrectData()){
+                String title, description;
+                title=EditTextName.getText().toString();
+                description=EditTextDescription.getText().toString();
+                ProgressDialog pd;
+                RequestParams params = new RequestParams();
+                params.put("oper", Oper);
+                if(Oper==2)params.put("id_article", IdArticle);
+                params.put("id_user", Service.IdUser);
+                params.put("title", title);
+                params.put("description", description);
+                pd = new ProgressDialog(AddEditArticleActivity.this);
+                pd.setTitle("Сообщение");
+                pd.setMessage("Подождите, идет обработка данных.");
+                // включаем анимацию ожидания
+                pd.setIndeterminate(true);
+                //не даем исчезнуть диалогу с сообщением
+                pd.setCancelable(false);
+                pd.show();
+                //отправка данных на сервер
+                AsyncHttpClient client = new AsyncHttpClient();
+                client.post(Service.UrlServer + "/AddEditArticleController", params, AddEditArticleControllerPost);
+                pd.dismiss();
+            }
+        }
+    };
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -60,85 +142,12 @@ public class AddEditArticleActivity extends AppCompatActivity {
                 pd.show();
                 //отправка данных на сервер
                 AsyncHttpClient client = new AsyncHttpClient();
-                client.post(Service.UrlServer + "/GetArticleUserController", params, new AsyncHttpResponseHandler() {
-                    @Override
-                    public void onStart() {
-
-                    }
-
-                    @Override
-                    public void onSuccess(int statusCode, cz.msebera.android.httpclient.Header[] headers, byte[] responseBody) {
-                        pd.dismiss();
-                        String response=new String(responseBody);
-                        response=response.trim();
-                        try {
-                            JSONObject obj=new JSONObject(response);
-                            EditTextName.setText(obj.getString("title"));
-                            EditTextDescription.setText(obj.getString("description"));
-                        } catch (JSONException e) {
-                            throw new RuntimeException(e);
-                        }
-                    }
-
-                    @Override
-                    public void onFailure(int statusCode, cz.msebera.android.httpclient.Header[] headers, byte[] responseBody, Throwable error) {
-                        pd.dismiss();
-                        Toast toast = Toast.makeText(getApplicationContext(), "Произошла ошибка.", Toast.LENGTH_SHORT);
-                        toast.show();
-                    }
-                });
+                client.post(Service.UrlServer + "/GetArticleUserController", params, GetArticleUserControllerPost);
+                pd.dismiss();
                 break;
         }
         //нажата кнопка 'Добавить/Изменить'
-        ButtonAddEdit.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                if(CheckCorrectData()){
-                    String title, description;
-                    title=EditTextName.getText().toString();
-                    description=EditTextDescription.getText().toString();
-                    ProgressDialog pd;
-                    RequestParams params = new RequestParams();
-                    params.put("oper", Oper);
-                    if(Oper==2)params.put("id_article", IdArticle);
-                    params.put("id_user", Service.IdUser);
-                    params.put("title", title);
-                    params.put("description", description);
-                    pd = new ProgressDialog(AddEditArticleActivity.this);
-                    pd.setTitle("Сообщение");
-                    pd.setMessage("Подождите, идет обработка данных.");
-                    // включаем анимацию ожидания
-                    pd.setIndeterminate(true);
-                    //не даем исчезнуть диалогу с сообщением
-                    pd.setCancelable(false);
-                    pd.show();
-                    //отправка данных на сервер
-                    AsyncHttpClient client = new AsyncHttpClient();
-                    client.post(Service.UrlServer + "/AddEditArticleController", params, new AsyncHttpResponseHandler() {
-                        @Override
-                        public void onStart() {
-
-                        }
-
-                        @Override
-                        public void onSuccess(int statusCode, cz.msebera.android.httpclient.Header[] headers, byte[] responseBody) {
-                            pd.dismiss();
-                            Service.FlagUpdate=true;
-                            if(Oper==1)Toast.makeText(getApplicationContext(), "Добавление данных прошло успешно.", Toast.LENGTH_SHORT).show();
-                            else Toast.makeText(getApplicationContext(), "Изменение данных прошло успешно.", Toast.LENGTH_SHORT).show();
-                            finish();
-                        }
-
-                        @Override
-                        public void onFailure(int statusCode, cz.msebera.android.httpclient.Header[] headers, byte[] responseBody, Throwable error) {
-                            pd.dismiss();
-                            Toast toast = Toast.makeText(getApplicationContext(), "Произошла ошибка.", Toast.LENGTH_SHORT);
-                            toast.show();
-                        }
-                    });
-                }
-            }
-        });
+        ButtonAddEdit.setOnClickListener(ButtonAddEditOnClickListener);
     }
     //проверка на корректность ввода данных
     private Boolean CheckCorrectData(){

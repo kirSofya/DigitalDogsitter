@@ -31,6 +31,46 @@ import cz.msebera.android.httpclient.Header;
 public class DescriptionDogActivity extends AppCompatActivity {
     TextView TextViewName, TextViewDateBirth, TextViewAge, TextViewBreed, TextViewDescription;
     ImageView ImageViewDog;
+
+    AsyncHttpResponseHandler GetDataDogControllerPost = new AsyncHttpResponseHandler() {
+        @Override
+        public void onStart() {
+
+        }
+
+        @Override
+        public void onSuccess(int statusCode, cz.msebera.android.httpclient.Header[] headers, byte[] responseBody) {
+//            pd.dismiss();
+            String response=new String(responseBody);
+            response=response.trim();
+            try {
+                JSONObject obj=new JSONObject(response);
+                TextViewName.setText("Кличка: "+obj.getString("name"));
+                TextViewDateBirth.setText("Дата рождения: "+obj.getString("date_birth_text"));
+                TextViewAge.setText("Возраст: "+obj.getInt("age"));
+                TextViewBreed.setText("Порода: "+obj.getString("breed"));
+                TextViewDescription.setText(obj.getString("about"));
+                String image_str=obj.getString("image");
+                Bitmap image;
+                if(image_str.length()>0){
+                    image=Service.DecodeBase64(image_str);
+                    ImageViewDog.setImageBitmap(image);
+                }else{
+                    ImageViewDog.setImageResource(android.R.color.transparent);
+                }
+            } catch (JSONException e) {
+                throw new RuntimeException(e);
+            }
+        }
+
+        @Override
+        public void onFailure(int statusCode, cz.msebera.android.httpclient.Header[] headers, byte[] responseBody, Throwable error) {
+//            pd.dismiss();
+            Toast toast = Toast.makeText(getApplicationContext(), "Произошла ошибка.", Toast.LENGTH_SHORT);
+            toast.show();
+        }
+    };
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -64,43 +104,7 @@ public class DescriptionDogActivity extends AppCompatActivity {
         pd.show();
         //отправка данных на сервер
         AsyncHttpClient client = new AsyncHttpClient();
-        client.post(Service.UrlServer + "/GetDataDogController", params, new AsyncHttpResponseHandler() {
-            @Override
-            public void onStart() {
-
-            }
-
-            @Override
-            public void onSuccess(int statusCode, cz.msebera.android.httpclient.Header[] headers, byte[] responseBody) {
-                pd.dismiss();
-                String response=new String(responseBody);
-                response=response.trim();
-                try {
-                    JSONObject obj=new JSONObject(response);
-                    TextViewName.setText("Кличка: "+obj.getString("name"));
-                    TextViewDateBirth.setText("Дата рождения: "+obj.getString("date_birth_text"));
-                    TextViewAge.setText("Возраст: "+obj.getInt("age"));
-                    TextViewBreed.setText("Порода: "+obj.getString("breed"));
-                    TextViewDescription.setText(obj.getString("about"));
-                    String image_str=obj.getString("image");
-                    Bitmap image;
-                    if(image_str.length()>0){
-                        image=Service.DecodeBase64(image_str);
-                        ImageViewDog.setImageBitmap(image);
-                    }else{
-                        ImageViewDog.setImageResource(android.R.color.transparent);
-                    }
-                } catch (JSONException e) {
-                    throw new RuntimeException(e);
-                }
-            }
-
-            @Override
-            public void onFailure(int statusCode, cz.msebera.android.httpclient.Header[] headers, byte[] responseBody, Throwable error) {
-                pd.dismiss();
-                Toast toast = Toast.makeText(getApplicationContext(), "Произошла ошибка.", Toast.LENGTH_SHORT);
-                toast.show();
-            }
-        });
+        client.post(Service.UrlServer + "/GetDataDogController", params, GetDataDogControllerPost);
+        pd.dismiss();
     }
 }
