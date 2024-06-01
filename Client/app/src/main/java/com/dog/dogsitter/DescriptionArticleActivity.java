@@ -18,6 +18,36 @@ import org.json.JSONObject;
 
 public class DescriptionArticleActivity extends AppCompatActivity {
     TextView TextViewTitle, TextViewDate, TextViewDescription;
+
+    AsyncHttpResponseHandler GetArticleUserControllerPost = new AsyncHttpResponseHandler() {
+        @Override
+        public void onStart() {
+
+        }
+
+        @Override
+        public void onSuccess(int statusCode, cz.msebera.android.httpclient.Header[] headers, byte[] responseBody) {
+//            pd.dismiss();
+            String response=new String(responseBody);
+            response=response.trim();
+            try {
+                JSONObject obj=new JSONObject(response);
+                TextViewTitle.setText(obj.getString("title"));
+                TextViewDate.setText(obj.getString("date_text"));
+                TextViewDescription.setText(obj.getString("description"));
+            } catch (JSONException e) {
+                throw new RuntimeException(e);
+            }
+        }
+
+        @Override
+        public void onFailure(int statusCode, cz.msebera.android.httpclient.Header[] headers, byte[] responseBody, Throwable error) {
+//            pd.dismiss();
+            Toast toast = Toast.makeText(getApplicationContext(), "Произошла ошибка.", Toast.LENGTH_SHORT);
+            toast.show();
+        }
+    };
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -48,33 +78,7 @@ public class DescriptionArticleActivity extends AppCompatActivity {
         pd.show();
         //отправка данных на сервер
         AsyncHttpClient client = new AsyncHttpClient();
-        client.post(Service.UrlServer + "/GetArticleUserController", params, new AsyncHttpResponseHandler() {
-            @Override
-            public void onStart() {
-
-            }
-
-            @Override
-            public void onSuccess(int statusCode, cz.msebera.android.httpclient.Header[] headers, byte[] responseBody) {
-                pd.dismiss();
-                String response=new String(responseBody);
-                response=response.trim();
-                try {
-                    JSONObject obj=new JSONObject(response);
-                    TextViewTitle.setText(obj.getString("title"));
-                    TextViewDate.setText(obj.getString("date_text"));
-                    TextViewDescription.setText(obj.getString("description"));
-                } catch (JSONException e) {
-                    throw new RuntimeException(e);
-                }
-            }
-
-            @Override
-            public void onFailure(int statusCode, cz.msebera.android.httpclient.Header[] headers, byte[] responseBody, Throwable error) {
-                pd.dismiss();
-                Toast toast = Toast.makeText(getApplicationContext(), "Произошла ошибка.", Toast.LENGTH_SHORT);
-                toast.show();
-            }
-        });
+        client.post(Service.UrlServer + "/GetArticleUserController", params, GetArticleUserControllerPost);
+        pd.dismiss();
     }
 }

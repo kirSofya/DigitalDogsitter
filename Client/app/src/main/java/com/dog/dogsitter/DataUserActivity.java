@@ -36,6 +36,133 @@ public class DataUserActivity extends AppCompatActivity {
     Button ButtonDownloadPhoto, ButtonDeletePhoto, ButtonSave;
     Switch SwitchDogsitter;
     Bitmap ImagePhoto=null;
+
+    View.OnClickListener ButtonDownloadPhotoOnClickListener = new View.OnClickListener() {
+        @Override
+        public void onClick(View view) {
+            //открываем файловый менеджер
+            Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+            intent.addCategory(Intent.CATEGORY_OPENABLE);
+            intent.setType("image/*");
+            startActivityForResult(intent, READ_REQUEST_CODE);
+        }
+    };
+
+    View.OnClickListener ButtonDeletePhotoOnClickListener = new View.OnClickListener() {
+        @Override
+        public void onClick(View view) {
+            if(ImagePhoto!=null) {
+                ImagePhoto = null;
+                ImageViewPhoto.setImageResource(android.R.color.transparent);
+            }
+        }
+    };
+
+    View.OnClickListener ButtonSaveOnClickListener = new View.OnClickListener() {
+        AsyncHttpResponseHandler SaveDataUserControllerPost = new AsyncHttpResponseHandler() {
+            @Override
+            public void onStart() {
+
+            }
+
+            @Override
+            public void onSuccess(int statusCode, cz.msebera.android.httpclient.Header[] headers, byte[] responseBody) {
+//                pd.dismiss();
+                String response=new String(responseBody);
+                Toast.makeText(getApplicationContext(), response, Toast.LENGTH_SHORT).show();
+            }
+
+            @Override
+            public void onFailure(int statusCode, cz.msebera.android.httpclient.Header[] headers, byte[] responseBody, Throwable error) {
+//                pd.dismiss();
+                Toast toast = Toast.makeText(getApplicationContext(), "Произошла ошибка.", Toast.LENGTH_SHORT);
+                toast.show();
+            }
+        };
+
+        @Override
+        public void onClick(View view) {
+            if(CheckCorrectData()){
+                String name, date_birth, email, password, phone, about, photo64="";
+                Boolean dogsitter;
+                name=EditTextName.getText().toString();
+                date_birth=EditTextDateBirth.getText().toString();
+                email=EditTextEmail.getText().toString();
+                password=EditTextPassword.getText().toString();
+                phone=EditTextPhone.getText().toString();
+                about=EditTextAbout.getText().toString();
+                dogsitter=SwitchDogsitter.isChecked();
+                if(ImagePhoto!=null)photo64 = Service.EncodeToBase64(ImagePhoto, Bitmap.CompressFormat.JPEG, 100);
+                ProgressDialog pd;
+                RequestParams params = new RequestParams();
+                params.put("id_user", Service.IdUser);
+                params.put("name", name);
+                params.put("date_birth", date_birth);
+                params.put("email", email);
+                params.put("password", password);
+                params.put("phone", phone);
+                params.put("about", about);
+                params.put("dogsitter", dogsitter);
+                params.put("photo", photo64);
+                pd = new ProgressDialog(DataUserActivity.this);
+                pd.setTitle("Сообщение");
+                pd.setMessage("Подождите, идет обработка данных.");
+                // включаем анимацию ожидания
+                pd.setIndeterminate(true);
+                //не даем исчезнуть диалогу с сообщением
+                pd.setCancelable(false);
+                pd.show();
+                //отправка данных на сервер
+                AsyncHttpClient client = new AsyncHttpClient();
+                client.post(Service.UrlServer + "/SaveDataUserController", params, SaveDataUserControllerPost);
+                pd.dismiss();
+            }
+        }
+    };
+
+    AsyncHttpResponseHandler GetDataUserControllerPost = new AsyncHttpResponseHandler() {
+        @Override
+        public void onStart() {
+
+        }
+
+        @Override
+        public void onSuccess(int statusCode, cz.msebera.android.httpclient.Header[] headers, byte[] responseBody) {
+//            pd.dismiss();
+            //получение ответа от сервера
+            String response=new String(responseBody);
+            response=response.trim();
+            try {
+                JSONObject obj=new JSONObject(response);
+                EditTextName.setText(obj.getString("name"));
+                EditTextDateBirth.setText(obj.getString("date_birth"));
+                EditTextPhone.setText(obj.getString("phone"));
+                EditTextEmail.setText(obj.getString("email"));
+                EditTextPassword.setText(obj.getString("password"));
+                EditTextAbout.setText(obj.getString("about"));
+                SwitchDogsitter.setChecked(obj.getBoolean("dogsitter"));
+                String image_str=obj.getString("photo");
+                Bitmap image;
+                if(image_str.length()>0){
+                    ImagePhoto=Service.DecodeBase64(image_str);
+                    image=Service.ScaleImage(30, ImagePhoto);
+                    ImageViewPhoto.setImageBitmap(image);
+                }else{
+                    ImagePhoto=null;
+                    ImageViewPhoto.setImageResource(android.R.color.transparent);
+                }
+            } catch (JSONException e) {
+                throw new RuntimeException(e);
+            }
+        }
+
+        @Override
+        public void onFailure(int statusCode, cz.msebera.android.httpclient.Header[] headers, byte[] responseBody, Throwable error) {
+//            pd.dismiss();
+            Toast.makeText(getApplicationContext(),"Произошла ошибка.", Toast.LENGTH_SHORT).show();
+        }
+    };
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -55,85 +182,11 @@ public class DataUserActivity extends AppCompatActivity {
         // убираем верхнюю строку где время и уровень заряда батареи
         getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN);
         //нажата кнопка 'Загрузить фото'
-        ButtonDownloadPhoto.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                //открываем файловый менеджер
-                Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
-                intent.addCategory(Intent.CATEGORY_OPENABLE);
-                intent.setType("image/*");
-                startActivityForResult(intent, READ_REQUEST_CODE);
-            }
-        });
+        ButtonDownloadPhoto.setOnClickListener(ButtonDownloadPhotoOnClickListener);
         //нажата кнопка 'Удалить фото'
-        ButtonDeletePhoto.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                if(ImagePhoto!=null) {
-                    ImagePhoto = null;
-                    ImageViewPhoto.setImageResource(android.R.color.transparent);
-                }
-            }
-        });
+        ButtonDeletePhoto.setOnClickListener(ButtonDeletePhotoOnClickListener);
         //нажата кнопка 'Сохранить'
-        ButtonSave.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                if(CheckCorrectData()){
-                    String name, date_birth, email, password, phone, about, photo64="";
-                    Boolean dogsitter;
-                    name=EditTextName.getText().toString();
-                    date_birth=EditTextDateBirth.getText().toString();
-                    email=EditTextEmail.getText().toString();
-                    password=EditTextPassword.getText().toString();
-                    phone=EditTextPhone.getText().toString();
-                    about=EditTextAbout.getText().toString();
-                    dogsitter=SwitchDogsitter.isChecked();
-                    if(ImagePhoto!=null)photo64 = Service.EncodeToBase64(ImagePhoto, Bitmap.CompressFormat.JPEG, 100);
-                    ProgressDialog pd;
-                    RequestParams params = new RequestParams();
-                    params.put("id_user", Service.IdUser);
-                    params.put("name", name);
-                    params.put("date_birth", date_birth);
-                    params.put("email", email);
-                    params.put("password", password);
-                    params.put("phone", phone);
-                    params.put("about", about);
-                    params.put("dogsitter", dogsitter);
-                    params.put("photo", photo64);
-                    pd = new ProgressDialog(DataUserActivity.this);
-                    pd.setTitle("Сообщение");
-                    pd.setMessage("Подождите, идет обработка данных.");
-                    // включаем анимацию ожидания
-                    pd.setIndeterminate(true);
-                    //не даем исчезнуть диалогу с сообщением
-                    pd.setCancelable(false);
-                    pd.show();
-                    //отправка данных на сервер
-                    AsyncHttpClient client = new AsyncHttpClient();
-                    client.post(Service.UrlServer + "/SaveDataUserController", params, new AsyncHttpResponseHandler() {
-                        @Override
-                        public void onStart() {
-
-                        }
-
-                        @Override
-                        public void onSuccess(int statusCode, cz.msebera.android.httpclient.Header[] headers, byte[] responseBody) {
-                            pd.dismiss();
-                            String response=new String(responseBody);
-                            Toast.makeText(getApplicationContext(), response, Toast.LENGTH_SHORT).show();
-                        }
-
-                        @Override
-                        public void onFailure(int statusCode, cz.msebera.android.httpclient.Header[] headers, byte[] responseBody, Throwable error) {
-                            pd.dismiss();
-                            Toast toast = Toast.makeText(getApplicationContext(), "Произошла ошибка.", Toast.LENGTH_SHORT);
-                            toast.show();
-                        }
-                    });
-                }
-            }
-        });
+        ButtonSave.setOnClickListener(ButtonSaveOnClickListener);
         GetDataUser();
     }
     //проверка на корректность ввода данных
@@ -167,48 +220,8 @@ public class DataUserActivity extends AppCompatActivity {
         pd.show();
         //отправка данных на сервер
         AsyncHttpClient client = new AsyncHttpClient();
-        client.post(Service.UrlServer+"/GetDataUserController", params, new AsyncHttpResponseHandler() {
-            @Override
-            public void onStart() {
-
-            }
-
-            @Override
-            public void onSuccess(int statusCode, cz.msebera.android.httpclient.Header[] headers, byte[] responseBody) {
-                pd.dismiss();
-                //получение ответа от сервера
-                String response=new String(responseBody);
-                response=response.trim();
-                try {
-                    JSONObject obj=new JSONObject(response);
-                    EditTextName.setText(obj.getString("name"));
-                    EditTextDateBirth.setText(obj.getString("date_birth"));
-                    EditTextPhone.setText(obj.getString("phone"));
-                    EditTextEmail.setText(obj.getString("email"));
-                    EditTextPassword.setText(obj.getString("password"));
-                    EditTextAbout.setText(obj.getString("about"));
-                    SwitchDogsitter.setChecked(obj.getBoolean("dogsitter"));
-                    String image_str=obj.getString("photo");
-                    Bitmap image;
-                    if(image_str.length()>0){
-                        ImagePhoto=Service.DecodeBase64(image_str);
-                        image=Service.ScaleImage(30, ImagePhoto);
-                        ImageViewPhoto.setImageBitmap(image);
-                    }else{
-                        ImagePhoto=null;
-                        ImageViewPhoto.setImageResource(android.R.color.transparent);
-                    }
-                } catch (JSONException e) {
-                    throw new RuntimeException(e);
-                }
-            }
-
-            @Override
-            public void onFailure(int statusCode, cz.msebera.android.httpclient.Header[] headers, byte[] responseBody, Throwable error) {
-                pd.dismiss();
-                Toast.makeText(getApplicationContext(),"Произошла ошибка.", Toast.LENGTH_SHORT).show();
-            }
-        });
+        client.post(Service.UrlServer+"/GetDataUserController", params, GetDataUserControllerPost);
+        pd.dismiss();
     }
     //при активации активности для получения результата
     @Override

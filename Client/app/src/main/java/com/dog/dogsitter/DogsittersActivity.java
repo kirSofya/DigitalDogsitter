@@ -41,6 +41,57 @@ public class DogsittersActivity extends AppCompatActivity {
     ListView ListViewDogsitters;
     List<DataUser> ListDogsitters;//список догситтеров
     AdapterDogsitters Adapter;
+
+    JsonHttpResponseHandler GetDogsittersControllerPost = new JsonHttpResponseHandler() {
+        @Override
+        public void onSuccess(int statusCode, Header[] headers, JSONObject response) {
+            final Handler h = new Handler() {//слушатель ответа
+                public void handleMessage(android.os.Message msg) {
+//                    pd.dismiss();
+                    Adapter = new AdapterDogsitters(DogsittersActivity.this);
+                    ListViewDogsitters.setAdapter(Adapter);
+                };
+            };
+            Thread t = new Thread(new Runnable() {
+                @SuppressLint("Range")
+                public void run() {
+                    try {
+                        JSONArray array=response.getJSONArray("array");
+                        ListDogsitters=new ArrayList<>();
+                        DataUser data;
+                        for(int i=0;i<array.length();i++){
+                            JSONObject obj=array.getJSONObject(i);
+                            data=new DataUser();
+                            data.Id=obj.getInt("id");
+                            data.Name=obj.getString("name");
+                            data.DateBirth=obj.getString("date_birth");
+                            data.Age=obj.getInt("age");
+                            data.Email=obj.getString("email");
+                            data.Phone=obj.getString("phone");
+                            data.Rating=obj.getDouble("rating");
+                            ListDogsitters.add(data);
+                        }
+                        Message msg=h.obtainMessage();
+                        Bundle bundle = new Bundle();
+                        bundle.putString("result", "");
+                        msg.setData(bundle);
+                        h.sendMessage(msg);
+                    } catch (JSONException e) {
+                        e.printStackTrace();
+                    }
+                }
+            });
+            t.start();
+        }
+
+        @Override
+        public void onFailure(int statusCode, Header[] headers, String res, Throwable t) {
+//            pd.dismiss();
+            Toast toast = Toast.makeText(getApplicationContext(), "Произошла ошибка.", Toast.LENGTH_SHORT);
+            toast.show();
+        }
+    };
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -70,58 +121,21 @@ public class DogsittersActivity extends AppCompatActivity {
         pd.show();
         //отправка данных на сервер
         AsyncHttpClient client = new AsyncHttpClient();
-        client.post(Service.UrlServer+"/GetDogsittersController", null, new JsonHttpResponseHandler() {
-            @Override
-            public void onSuccess(int statusCode, Header[] headers, JSONObject response) {
-                final Handler h = new Handler() {//слушатель ответа
-                    public void handleMessage(android.os.Message msg) {
-                        pd.dismiss();
-                        Adapter = new AdapterDogsitters(DogsittersActivity.this);
-                        ListViewDogsitters.setAdapter(Adapter);
-                    };
-                };
-                Thread t = new Thread(new Runnable() {
-                    @SuppressLint("Range")
-                    public void run() {
-                        try {
-                            JSONArray array=response.getJSONArray("array");
-                            ListDogsitters=new ArrayList<>();
-                            DataUser data;
-                            for(int i=0;i<array.length();i++){
-                                JSONObject obj=array.getJSONObject(i);
-                                data=new DataUser();
-                                data.Id=obj.getInt("id");
-                                data.Name=obj.getString("name");
-                                data.DateBirth=obj.getString("date_birth");
-                                data.Age=obj.getInt("age");
-                                data.Email=obj.getString("email");
-                                data.Phone=obj.getString("phone");
-                                data.Rating=obj.getDouble("rating");
-                                ListDogsitters.add(data);
-                            }
-                            Message msg=h.obtainMessage();
-                            Bundle bundle = new Bundle();
-                            bundle.putString("result", "");
-                            msg.setData(bundle);
-                            h.sendMessage(msg);
-                        } catch (JSONException e) {
-                            e.printStackTrace();
-                        }
-                    }
-                });
-                t.start();
-            }
-
-            @Override
-            public void onFailure(int statusCode, Header[] headers, String res, Throwable t) {
-                pd.dismiss();
-                Toast toast = Toast.makeText(getApplicationContext(), "Произошла ошибка.", Toast.LENGTH_SHORT);
-                toast.show();
-            }
-        });
+        client.post(Service.UrlServer+"/GetDogsittersController", null, GetDogsittersControllerPost);
+        pd.dismiss();
     }
     public class AdapterDogsitters extends BaseAdapter {
         private LayoutInflater mLayoutInflater;
+
+        View.OnClickListener fabAboutUserOnClickListener = new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                Service.FlagUpdate=false;
+                Intent intent = new Intent(DogsittersActivity.this, AboutUserActivity.class);
+                intent.putExtra("IdUser", (int)view.getTag());
+                startActivity(intent);
+            }
+        };
 
         public AdapterDogsitters(Context context) {
             mLayoutInflater = LayoutInflater.from(context);
@@ -160,15 +174,7 @@ public class DogsittersActivity extends AppCompatActivity {
             textViewRating.setText("Рейтинг: "+String.format("%.2f", data.Rating));
             fabAboutUser.setTag(data.Id);
             //подробная информация о догситтере
-            fabAboutUser.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View view) {
-                    Service.FlagUpdate=false;
-                    Intent intent = new Intent(DogsittersActivity.this, AboutUserActivity.class);
-                    intent.putExtra("IdUser", (int)view.getTag());
-                    startActivity(intent);
-                }
-            });
+            fabAboutUser.setOnClickListener(fabAboutUserOnClickListener);
             return convertView;
         }
     }

@@ -21,6 +21,89 @@ public class AddEditMedicalDog extends AppCompatActivity {
     EditText EditTextDate, EditTextDescription;
     Button ButtonAddEdit;
     int Oper=0, IdDog=0, IdMedical=0;
+
+    AsyncHttpResponseHandler GetMedicalDogControllerPost = new AsyncHttpResponseHandler() {
+        @Override
+        public void onStart() {
+
+        }
+
+        @Override
+        public void onSuccess(int statusCode, cz.msebera.android.httpclient.Header[] headers, byte[] responseBody) {
+//            pd.dismiss();
+            String response=new String(responseBody);
+            response=response.trim();
+            try {
+                JSONObject obj=new JSONObject(response);
+                EditTextDate.setText(obj.getString("date"));
+                EditTextDescription.setText(obj.getString("description"));
+            } catch (JSONException e) {
+                throw new RuntimeException(e);
+            }
+        }
+
+        @Override
+        public void onFailure(int statusCode, cz.msebera.android.httpclient.Header[] headers, byte[] responseBody, Throwable error) {
+//            pd.dismiss();
+            Toast toast = Toast.makeText(getApplicationContext(), "Произошла ошибка.", Toast.LENGTH_SHORT);
+            toast.show();
+        }
+    };
+
+    AsyncHttpResponseHandler AddEditMedicalDogControllerPost = new AsyncHttpResponseHandler() {
+        @Override
+        public void onStart() {
+
+        }
+
+        @Override
+        public void onSuccess(int statusCode, cz.msebera.android.httpclient.Header[] headers, byte[] responseBody) {
+//            pd.dismiss();
+            Service.FlagUpdate=true;
+            if(Oper==1)Toast.makeText(getApplicationContext(), "Добавление данных прошло успешно.", Toast.LENGTH_SHORT).show();
+            else Toast.makeText(getApplicationContext(), "Изменение данных прошло успешно.", Toast.LENGTH_SHORT).show();
+            finish();
+        }
+
+        @Override
+        public void onFailure(int statusCode, cz.msebera.android.httpclient.Header[] headers, byte[] responseBody, Throwable error) {
+//            pd.dismiss();
+            Toast toast = Toast.makeText(getApplicationContext(), "Произошла ошибка.", Toast.LENGTH_SHORT);
+            toast.show();
+        }
+    };
+
+    View.OnClickListener ButtonAddEditOnClickListener = new View.OnClickListener() {
+        @Override
+        public void onClick(View view) {
+            if(CheckCorrectData()){
+                String date, description;
+                date=EditTextDate.getText().toString();
+                description=EditTextDescription.getText().toString();
+                ProgressDialog pd;
+                RequestParams params = new RequestParams();
+                params.put("oper", Oper);
+                params.put("id_dog", IdDog);
+                params.put("id_user", Service.IdUser);
+                if(Oper==2)params.put("id_medical", IdMedical);
+                params.put("date", date);
+                params.put("description", description);
+                pd = new ProgressDialog(AddEditMedicalDog.this);
+                pd.setTitle("Сообщение");
+                pd.setMessage("Подождите, идет обработка данных.");
+                // включаем анимацию ожидания
+                pd.setIndeterminate(true);
+                //не даем исчезнуть диалогу с сообщением
+                pd.setCancelable(false);
+                pd.show();
+                //отправка данных на сервер
+                AsyncHttpClient client = new AsyncHttpClient();
+                client.post(Service.UrlServer + "/AddEditMedicalDogController", params, AddEditMedicalDogControllerPost);
+                pd.dismiss();
+            }
+        }
+    };
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -58,86 +141,12 @@ public class AddEditMedicalDog extends AppCompatActivity {
                 pd.show();
                 //отправка данных на сервер
                 AsyncHttpClient client = new AsyncHttpClient();
-                client.post(Service.UrlServer + "/GetMedicalDogController", params, new AsyncHttpResponseHandler() {
-                    @Override
-                    public void onStart() {
-
-                    }
-
-                    @Override
-                    public void onSuccess(int statusCode, cz.msebera.android.httpclient.Header[] headers, byte[] responseBody) {
-                        pd.dismiss();
-                        String response=new String(responseBody);
-                        response=response.trim();
-                        try {
-                            JSONObject obj=new JSONObject(response);
-                            EditTextDate.setText(obj.getString("date"));
-                            EditTextDescription.setText(obj.getString("description"));
-                        } catch (JSONException e) {
-                            throw new RuntimeException(e);
-                        }
-                    }
-
-                    @Override
-                    public void onFailure(int statusCode, cz.msebera.android.httpclient.Header[] headers, byte[] responseBody, Throwable error) {
-                        pd.dismiss();
-                        Toast toast = Toast.makeText(getApplicationContext(), "Произошла ошибка.", Toast.LENGTH_SHORT);
-                        toast.show();
-                    }
-                });
+                client.post(Service.UrlServer + "/GetMedicalDogController", params, GetMedicalDogControllerPost);
+                pd.dismiss();
                 break;
         }
         //нажата кнопка 'Добавить/Изменить'
-        ButtonAddEdit.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                if(CheckCorrectData()){
-                    String date, description;
-                    date=EditTextDate.getText().toString();
-                    description=EditTextDescription.getText().toString();
-                    ProgressDialog pd;
-                    RequestParams params = new RequestParams();
-                    params.put("oper", Oper);
-                    params.put("id_dog", IdDog);
-                    params.put("id_user", Service.IdUser);
-                    if(Oper==2)params.put("id_medical", IdMedical);
-                    params.put("date", date);
-                    params.put("description", description);
-                    pd = new ProgressDialog(AddEditMedicalDog.this);
-                    pd.setTitle("Сообщение");
-                    pd.setMessage("Подождите, идет обработка данных.");
-                    // включаем анимацию ожидания
-                    pd.setIndeterminate(true);
-                    //не даем исчезнуть диалогу с сообщением
-                    pd.setCancelable(false);
-                    pd.show();
-                    //отправка данных на сервер
-                    AsyncHttpClient client = new AsyncHttpClient();
-                    client.post(Service.UrlServer + "/AddEditMedicalDogController", params, new AsyncHttpResponseHandler() {
-                        @Override
-                        public void onStart() {
-
-                        }
-
-                        @Override
-                        public void onSuccess(int statusCode, cz.msebera.android.httpclient.Header[] headers, byte[] responseBody) {
-                            pd.dismiss();
-                            Service.FlagUpdate=true;
-                            if(Oper==1)Toast.makeText(getApplicationContext(), "Добавление данных прошло успешно.", Toast.LENGTH_SHORT).show();
-                            else Toast.makeText(getApplicationContext(), "Изменение данных прошло успешно.", Toast.LENGTH_SHORT).show();
-                            finish();
-                        }
-
-                        @Override
-                        public void onFailure(int statusCode, cz.msebera.android.httpclient.Header[] headers, byte[] responseBody, Throwable error) {
-                            pd.dismiss();
-                            Toast toast = Toast.makeText(getApplicationContext(), "Произошла ошибка.", Toast.LENGTH_SHORT);
-                            toast.show();
-                        }
-                    });
-                }
-            }
-        });
+        ButtonAddEdit.setOnClickListener(ButtonAddEditOnClickListener);
     }
     //событие при закрытии активности
     @Override

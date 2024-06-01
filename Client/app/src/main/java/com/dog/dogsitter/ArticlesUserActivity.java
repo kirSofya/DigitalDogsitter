@@ -47,6 +47,64 @@ public class ArticlesUserActivity extends AppCompatActivity {
     List<DataArticle> ListArticles;
     FloatingActionButton FabAdd;
     AdapterArticles Adapter;
+
+    View.OnClickListener FabAddOnClickListener = new View.OnClickListener() {
+        @Override
+        public void onClick(View view) {
+            Service.FlagUpdate = false;
+            Intent intent = new Intent(ArticlesUserActivity.this, AddEditArticleActivity.class);
+            intent.putExtra("Oper", 1);
+            startActivity(intent);
+        }
+    };
+
+    JsonHttpResponseHandler GetArticlesUserControllerPost = new JsonHttpResponseHandler() {
+        @Override
+        public void onSuccess(int statusCode, Header[] headers, JSONObject response) {
+            final Handler h = new Handler() {//слушатель ответа
+                public void handleMessage(android.os.Message msg) {
+//                    pd.dismiss();
+                    Adapter = new AdapterArticles(ArticlesUserActivity.this);
+                    ListViewArticles.setAdapter(Adapter);
+                };
+            };
+            Thread t = new Thread(new Runnable() {
+                @SuppressLint("Range")
+                public void run() {
+                    try {
+                        JSONArray array=response.getJSONArray("array");
+                        ListArticles=new ArrayList<>();
+                        DataArticle data;
+                        for(int i=0;i<array.length();i++){
+                            JSONObject obj=array.getJSONObject(i);
+                            data=new DataArticle();
+                            data.Id=obj.getInt("id");
+                            data.DateText=obj.getString("date_text");
+                            data.Title=obj.getString("title");
+                            data.Description=obj.getString("description");
+                            ListArticles.add(data);
+                        }
+                        Message msg=h.obtainMessage();
+                        Bundle bundle = new Bundle();
+                        bundle.putString("result", "");
+                        msg.setData(bundle);
+                        h.sendMessage(msg);
+                    } catch (JSONException e) {
+                        e.printStackTrace();
+                    }
+                }
+            });
+            t.start();
+        }
+
+        @Override
+        public void onFailure(int statusCode, Header[] headers, String res, Throwable t) {
+//            pd.dismiss();
+            Toast toast = Toast.makeText(getApplicationContext(), "Произошла ошибка.", Toast.LENGTH_SHORT);
+            toast.show();
+        }
+    };
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -57,15 +115,7 @@ public class ArticlesUserActivity extends AppCompatActivity {
         // убираем верхнюю строку где время и уровень заряда батареи
         getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN);
         //добавление данных
-        FabAdd.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                Service.FlagUpdate = false;
-                Intent intent = new Intent(ArticlesUserActivity.this, AddEditArticleActivity.class);
-                intent.putExtra("Oper", 1);
-                startActivity(intent);
-            }
-        });
+        FabAdd.setOnClickListener(FabAddOnClickListener);
     }
     //событие при активизации активности
     @Override
@@ -88,55 +138,96 @@ public class ArticlesUserActivity extends AppCompatActivity {
         pd.show();
         //отправка данных на сервер
         AsyncHttpClient client = new AsyncHttpClient();
-        client.post(Service.UrlServer+"/GetArticlesUserController", params, new JsonHttpResponseHandler() {
-            @Override
-            public void onSuccess(int statusCode, Header[] headers, JSONObject response) {
-                final Handler h = new Handler() {//слушатель ответа
-                    public void handleMessage(android.os.Message msg) {
-                        pd.dismiss();
-                        Adapter = new AdapterArticles(ArticlesUserActivity.this);
-                        ListViewArticles.setAdapter(Adapter);
-                    };
-                };
-                Thread t = new Thread(new Runnable() {
-                    @SuppressLint("Range")
-                    public void run() {
-                        try {
-                            JSONArray array=response.getJSONArray("array");
-                            ListArticles=new ArrayList<>();
-                            DataArticle data;
-                            for(int i=0;i<array.length();i++){
-                                JSONObject obj=array.getJSONObject(i);
-                                data=new DataArticle();
-                                data.Id=obj.getInt("id");
-                                data.DateText=obj.getString("date_text");
-                                data.Title=obj.getString("title");
-                                data.Description=obj.getString("description");
-                                ListArticles.add(data);
-                            }
-                            Message msg=h.obtainMessage();
-                            Bundle bundle = new Bundle();
-                            bundle.putString("result", "");
-                            msg.setData(bundle);
-                            h.sendMessage(msg);
-                        } catch (JSONException e) {
-                            e.printStackTrace();
-                        }
-                    }
-                });
-                t.start();
-            }
-
-            @Override
-            public void onFailure(int statusCode, Header[] headers, String res, Throwable t) {
-                pd.dismiss();
-                Toast toast = Toast.makeText(getApplicationContext(), "Произошла ошибка.", Toast.LENGTH_SHORT);
-                toast.show();
-            }
-        });
+        client.post(Service.UrlServer+"/GetArticlesUserController", params, GetArticlesUserControllerPost);
+        pd.dismiss();
     }
     public class AdapterArticles extends BaseAdapter {
         private LayoutInflater mLayoutInflater;
+
+        View.OnClickListener fabDescriptionOnClickListener = new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                Service.FlagUpdate=false;
+                Intent intent = new Intent(ArticlesUserActivity.this, DescriptionArticleActivity.class);
+                intent.putExtra("IdArticle", (int)view.getTag());
+                startActivity(intent);
+            }
+        };
+
+        View.OnClickListener fabEditOnClickListener = new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                Service.FlagUpdate=false;
+                Intent intent = new Intent(ArticlesUserActivity.this, AddEditArticleActivity.class);
+                intent.putExtra("Oper", 2);
+                intent.putExtra("IdArticle", (int)view.getTag());
+                startActivity(intent);
+            }
+        };
+
+        View.OnClickListener fabDeleteOnClickListener = new View.OnClickListener() {
+            View view;
+            DialogInterface.OnClickListener AlertDialogPositiveButtonListener = new DialogInterface.OnClickListener() {
+                AsyncHttpResponseHandler DeleteArticleControllerPost = new AsyncHttpResponseHandler() {
+                    @Override
+                    public void onStart() {
+
+                    }
+
+                    @Override
+                    public void onSuccess(int statusCode, cz.msebera.android.httpclient.Header[] headers, byte[] responseBody) {
+//                        pd.dismiss();
+                        Toast.makeText(getApplicationContext(), "Удаление прошло успешно.", Toast.LENGTH_SHORT).show();
+                        GetListArticles();
+                    }
+
+                    @Override
+                    public void onFailure(int statusCode, cz.msebera.android.httpclient.Header[] headers, byte[] responseBody, Throwable error) {
+//                        pd.dismiss();
+                        Toast.makeText(getApplicationContext(), "Произошла ошибка.", Toast.LENGTH_SHORT).show();
+                    }
+                };
+
+                @Override
+                public void onClick(DialogInterface dialogInterface, int i) {
+                    ProgressDialog pd;
+                    RequestParams params = new RequestParams();
+                    params.put("id_article", (int) view.getTag());
+
+                    pd = new ProgressDialog(ArticlesUserActivity.this);
+                    pd.setTitle("Сообщение");
+                    pd.setMessage("Подождите, идет обработка данных.");
+                    // включаем анимацию ожидания
+                    pd.setIndeterminate(true);
+                    //не даем исчезнуть диалогу с сообщением
+                    pd.setCancelable(false);
+                    pd.show();
+                    //отправка данных на сервер
+                    AsyncHttpClient client = new AsyncHttpClient();
+                    client.post(Service.UrlServer + "/DeleteArticleController", params, DeleteArticleControllerPost);
+                    pd.dismiss();
+                }
+            };
+
+            DialogInterface.OnClickListener AlertDialogNegativeButtonListener = new DialogInterface.OnClickListener() {
+                @Override
+                public void onClick(DialogInterface dialogInterface, int i) {
+
+                }
+            };
+
+            @Override
+            public void onClick(View view) {
+                this.view = view;
+                AlertDialog alertDialog = new AlertDialog.Builder(ArticlesUserActivity.this)
+                        .setIcon(android.R.drawable.ic_dialog_alert)
+                        .setTitle("Сообщение")
+                        .setMessage("Удалить данные о собаке?")
+                        .setPositiveButton("Да", AlertDialogPositiveButtonListener)
+                        .setNegativeButton("Нет", AlertDialogNegativeButtonListener)
+                        .show();
+            }
+        };
 
         public AdapterArticles(Context context) {
             mLayoutInflater = LayoutInflater.from(context);
@@ -171,82 +262,13 @@ public class ArticlesUserActivity extends AppCompatActivity {
             textViewDescription.setText(data.Description);
             fabDescription.setTag(data.Id);
             //подробная информация о статье
-            fabDescription.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View view) {
-                    Service.FlagUpdate=false;
-                    Intent intent = new Intent(ArticlesUserActivity.this, DescriptionArticleActivity.class);
-                    intent.putExtra("IdArticle", (int)view.getTag());
-                    startActivity(intent);
-                }
-            });
+            fabDescription.setOnClickListener(fabDescriptionOnClickListener);
             fabEdit.setTag(data.Id);
             //редактирование данных по статье
-            fabEdit.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View view) {
-                    Service.FlagUpdate=false;
-                    Intent intent = new Intent(ArticlesUserActivity.this, AddEditArticleActivity.class);
-                    intent.putExtra("Oper", 2);
-                    intent.putExtra("IdArticle", (int)view.getTag());
-                    startActivity(intent);
-                }
-            });
+            fabEdit.setOnClickListener(fabEditOnClickListener);
             fabDelete.setTag(data.Id);
             //удаление данных о статье
-            fabDelete.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View view) {
-                    AlertDialog alertDialog = new AlertDialog.Builder(ArticlesUserActivity.this)
-                            .setIcon(android.R.drawable.ic_dialog_alert)
-                            .setTitle("Сообщение")
-                            .setMessage("Удалить данные о собаке?")
-                            .setPositiveButton("Да", new DialogInterface.OnClickListener() {
-                                @Override
-                                public void onClick(DialogInterface dialogInterface, int i) {
-                                    ProgressDialog pd;
-                                    RequestParams params = new RequestParams();
-                                    params.put("id_article", (int) view.getTag());
-                                    pd = new ProgressDialog(ArticlesUserActivity.this);
-                                    pd.setTitle("Сообщение");
-                                    pd.setMessage("Подождите, идет обработка данных.");
-                                    // включаем анимацию ожидания
-                                    pd.setIndeterminate(true);
-                                    //не даем исчезнуть диалогу с сообщением
-                                    pd.setCancelable(false);
-                                    pd.show();
-                                    //отправка данных на сервер
-                                    AsyncHttpClient client = new AsyncHttpClient();
-                                    client.post(Service.UrlServer + "/DeleteArticleController", params, new AsyncHttpResponseHandler() {
-                                        @Override
-                                        public void onStart() {
-
-                                        }
-
-                                        @Override
-                                        public void onSuccess(int statusCode, cz.msebera.android.httpclient.Header[] headers, byte[] responseBody) {
-                                            pd.dismiss();
-                                            Toast.makeText(getApplicationContext(), "Удаление прошло успешно.", Toast.LENGTH_SHORT).show();
-                                            GetListArticles();
-                                        }
-
-                                        @Override
-                                        public void onFailure(int statusCode, cz.msebera.android.httpclient.Header[] headers, byte[] responseBody, Throwable error) {
-                                            pd.dismiss();
-                                            Toast.makeText(getApplicationContext(), "Произошла ошибка.", Toast.LENGTH_SHORT).show();
-                                        }
-                                    });
-                                }
-                            })
-                            .setNegativeButton("Нет", new DialogInterface.OnClickListener() {
-                                @Override
-                                public void onClick(DialogInterface dialogInterface, int i) {
-
-                                }
-                            })
-                            .show();
-                }
-            });
+            fabDelete.setOnClickListener(fabDeleteOnClickListener);
             return convertView;
         }
     }

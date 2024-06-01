@@ -50,6 +50,72 @@ public class DogsUserActivity extends AppCompatActivity {
     List<DataDog> ListDogs;//список собак пользователя
     FloatingActionButton FabAdd;
     int IdUser=0;
+
+    View.OnClickListener FabAddOnClickListener = new View.OnClickListener() {
+        @Override
+        public void onClick(View view) {
+            Service.FlagUpdate = false;
+            Intent intent = new Intent(DogsUserActivity.this, AddEditDogActivity.class);
+            intent.putExtra("Oper", 1);
+            startActivity(intent);
+        }
+    };
+
+    JsonHttpResponseHandler GetListDogsUserControllerPost = new JsonHttpResponseHandler() {
+        @Override
+        public void onSuccess(int statusCode, Header[] headers, JSONObject response) {
+            final Handler h = new Handler() {//слушатель ответа
+                public void handleMessage(android.os.Message msg) {
+//                    pd.dismiss();
+                    Adapter = new AdapterMyDogs(DogsUserActivity.this);
+                    ListViewDogs.setAdapter(Adapter);
+                };
+            };
+            Thread t = new Thread(new Runnable() {
+                @SuppressLint("Range")
+                public void run() {
+                    try {
+                        JSONArray array=response.getJSONArray("array");
+                        ListDogs=new ArrayList<>();
+                        DataDog data;
+                        for(int i=0;i<array.length();i++){
+                            JSONObject obj=array.getJSONObject(i);
+                            data=new DataDog();
+                            data.Id=obj.getInt("id");
+                            data.Name=obj.getString("name");
+                            data.DateBirth=obj.getString("date_birth");
+                            data.DateBirthText=obj.getString("date_birth_text");
+                            data.Breed=obj.getString("breed");
+                            data.Age=obj.getInt("age");
+                            String image_str=obj.getString("image");
+                            Bitmap image;
+                            if(image_str.length()>0){
+                                image=Service.DecodeBase64(image_str);
+                                data.Image=Service.ScaleImage(30, image);
+                            }else data.Image=null;
+                            ListDogs.add(data);
+                        }
+                        Message msg=h.obtainMessage();
+                        Bundle bundle = new Bundle();
+                        bundle.putString("result", "");
+                        msg.setData(bundle);
+                        h.sendMessage(msg);
+                    } catch (JSONException e) {
+                        e.printStackTrace();
+                    }
+                }
+            });
+            t.start();
+        }
+
+        @Override
+        public void onFailure(int statusCode, Header[] headers, String res, Throwable t) {
+//            pd.dismiss();
+            Toast toast = Toast.makeText(getApplicationContext(), "Произошла ошибка.", Toast.LENGTH_SHORT);
+            toast.show();
+        }
+    };
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -65,15 +131,7 @@ public class DogsUserActivity extends AppCompatActivity {
         if(Service.IdUser==IdUser) {
             FabAdd.setVisibility(View.VISIBLE);
             //добавление данных
-            FabAdd.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View view) {
-                    Service.FlagUpdate = false;
-                    Intent intent = new Intent(DogsUserActivity.this, AddEditDogActivity.class);
-                    intent.putExtra("Oper", 1);
-                    startActivity(intent);
-                }
-            });
+            FabAdd.setOnClickListener(FabAddOnClickListener);
         }else FabAdd.setVisibility(View.GONE);
     }
     //событие при активизации активности
@@ -97,60 +155,8 @@ public class DogsUserActivity extends AppCompatActivity {
         pd.show();
         //отправка данных на сервер
         AsyncHttpClient client = new AsyncHttpClient();
-        client.post(Service.UrlServer+"/GetListDogsUserController", params, new JsonHttpResponseHandler() {
-            @Override
-            public void onSuccess(int statusCode, Header[] headers, JSONObject response) {
-                final Handler h = new Handler() {//слушатель ответа
-                    public void handleMessage(android.os.Message msg) {
-                        pd.dismiss();
-                        Adapter = new AdapterMyDogs(DogsUserActivity.this);
-                        ListViewDogs.setAdapter(Adapter);
-                    };
-                };
-                Thread t = new Thread(new Runnable() {
-                    @SuppressLint("Range")
-                    public void run() {
-                        try {
-                            JSONArray array=response.getJSONArray("array");
-                            ListDogs=new ArrayList<>();
-                            DataDog data;
-                            for(int i=0;i<array.length();i++){
-                                JSONObject obj=array.getJSONObject(i);
-                                data=new DataDog();
-                                data.Id=obj.getInt("id");
-                                data.Name=obj.getString("name");
-                                data.DateBirth=obj.getString("date_birth");
-                                data.DateBirthText=obj.getString("date_birth_text");
-                                data.Breed=obj.getString("breed");
-                                data.Age=obj.getInt("age");
-                                String image_str=obj.getString("image");
-                                Bitmap image;
-                                if(image_str.length()>0){
-                                    image=Service.DecodeBase64(image_str);
-                                    data.Image=Service.ScaleImage(30, image);
-                                }else data.Image=null;
-                                ListDogs.add(data);
-                            }
-                            Message msg=h.obtainMessage();
-                            Bundle bundle = new Bundle();
-                            bundle.putString("result", "");
-                            msg.setData(bundle);
-                            h.sendMessage(msg);
-                        } catch (JSONException e) {
-                            e.printStackTrace();
-                        }
-                    }
-                });
-                t.start();
-            }
-
-            @Override
-            public void onFailure(int statusCode, Header[] headers, String res, Throwable t) {
-                pd.dismiss();
-                Toast toast = Toast.makeText(getApplicationContext(), "Произошла ошибка.", Toast.LENGTH_SHORT);
-                toast.show();
-            }
-        });
+        client.post(Service.UrlServer+"/GetListDogsUserController", params, GetListDogsUserControllerPost);
+        pd.dismiss();
     }
     //преобразование Uri в Bitmap
     private Bitmap GetBitmapFromUri(Uri uri) throws IOException {
@@ -163,6 +169,101 @@ public class DogsUserActivity extends AppCompatActivity {
     }
     public class AdapterMyDogs extends BaseAdapter {
         private LayoutInflater mLayoutInflater;
+
+//        View view;
+
+        View.OnClickListener fabDescriptionOnClickListener = new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                Service.FlagUpdate=false;
+                Intent intent = new Intent(DogsUserActivity.this, DescriptionDogActivity.class);
+                intent.putExtra("IdDog", (int)view.getTag());
+                startActivity(intent);
+            }
+        };
+
+        View.OnClickListener fabMedicalOnClickListener = new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                Service.FlagUpdate=false;
+                Intent intent = new Intent(DogsUserActivity.this, MedicalDogActivity.class);
+                intent.putExtra("IdUser", IdUser);
+                intent.putExtra("IdDog", (int)view.getTag());
+                startActivity(intent);
+            }
+        };
+
+        View.OnClickListener fabEditOnClickListener = new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                Service.FlagUpdate = false;
+                Intent intent = new Intent(DogsUserActivity.this, AddEditDogActivity.class);
+                intent.putExtra("Oper", 2);
+                intent.putExtra("IdDog", (int) view.getTag());
+                startActivity(intent);
+            }
+        };
+
+        View.OnClickListener fabDeleteOnClickListener = new View.OnClickListener() {
+
+            View view;
+            DialogInterface.OnClickListener AlertDialogPositiveButtonListener = new DialogInterface.OnClickListener() {
+                @Override
+                public void onClick(DialogInterface dialogInterface, int i) {
+                    ProgressDialog pd;
+                    RequestParams params = new RequestParams();
+                    params.put("id_dog", (int) view.getTag());
+                    pd = new ProgressDialog(DogsUserActivity.this);
+                    pd.setTitle("Сообщение");
+                    pd.setMessage("Подождите, идет обработка данных.");
+                    // включаем анимацию ожидания
+                    pd.setIndeterminate(true);
+                    //не даем исчезнуть диалогу с сообщением
+                    pd.setCancelable(false);
+                    pd.show();
+                    //отправка данных на сервер
+                    AsyncHttpClient client = new AsyncHttpClient();
+                    client.post(Service.UrlServer + "/DeleteDogController", params, new AsyncHttpResponseHandler() {
+                        @Override
+                        public void onStart() {
+
+                        }
+
+                        @Override
+                        public void onSuccess(int statusCode, cz.msebera.android.httpclient.Header[] headers, byte[] responseBody) {
+                            pd.dismiss();
+                            Toast.makeText(getApplicationContext(), "Удаление прошло успешно.", Toast.LENGTH_SHORT).show();
+                            GetListDogs();
+                        }
+
+                        @Override
+                        public void onFailure(int statusCode, cz.msebera.android.httpclient.Header[] headers, byte[] responseBody, Throwable error) {
+                            pd.dismiss();
+                            Toast.makeText(getApplicationContext(), "Произошла ошибка.", Toast.LENGTH_SHORT).show();
+                        }
+                    });
+                }
+            };
+
+            DialogInterface.OnClickListener AlertDialogNegativeButtonListener = new DialogInterface.OnClickListener() {
+                @Override
+                public void onClick(DialogInterface dialogInterface, int i) {
+
+                }
+            };
+
+            @Override
+            public void onClick(View view) {
+                this.view = view;
+                AlertDialog alertDialog = new AlertDialog.Builder(DogsUserActivity.this)
+                        .setIcon(android.R.drawable.ic_dialog_alert)
+                        .setTitle("Сообщение")
+                        .setMessage("Удалить данные о собаке?")
+                        .setPositiveButton("Да", AlertDialogPositiveButtonListener)
+                        .setNegativeButton("Нет", AlertDialogNegativeButtonListener)
+                        .show();
+            }
+        };
 
         public AdapterMyDogs(Context context) {
             mLayoutInflater = LayoutInflater.from(context);
@@ -207,97 +308,19 @@ public class DogsUserActivity extends AppCompatActivity {
             textViewBreed.setText("Порода: "+data.Breed);
             fabDescription.setTag(data.Id);
             //подробная информация о собаке
-            fabDescription.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View view) {
-                    Service.FlagUpdate=false;
-                    Intent intent = new Intent(DogsUserActivity.this, DescriptionDogActivity.class);
-                    intent.putExtra("IdDog", (int)view.getTag());
-                    startActivity(intent);
-                }
-            });
+            fabDescription.setOnClickListener(fabDescriptionOnClickListener);
             fabMedical.setTag(data.Id);
             //медицинские данные о собаке
-            fabMedical.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View view) {
-                    Service.FlagUpdate=false;
-                    Intent intent = new Intent(DogsUserActivity.this, MedicalDogActivity.class);
-                    intent.putExtra("IdUser", IdUser);
-                    intent.putExtra("IdDog", (int)view.getTag());
-                    startActivity(intent);
-                }
-            });
+            fabMedical.setOnClickListener(fabMedicalOnClickListener);
             if(Service.IdUser==IdUser) {
                 fabEdit.setVisibility(View.VISIBLE);
                 fabDelete.setVisibility(View.VISIBLE);
                 fabEdit.setTag(data.Id);
                 //редактирование данных о собаке
-                fabEdit.setOnClickListener(new View.OnClickListener() {
-                    @Override
-                    public void onClick(View view) {
-                        Service.FlagUpdate = false;
-                        Intent intent = new Intent(DogsUserActivity.this, AddEditDogActivity.class);
-                        intent.putExtra("Oper", 2);
-                        intent.putExtra("IdDog", (int) view.getTag());
-                        startActivity(intent);
-                    }
-                });
+                fabEdit.setOnClickListener(fabEditOnClickListener);
                 fabDelete.setTag(data.Id);
                 //удаление данных о собаке
-                fabDelete.setOnClickListener(new View.OnClickListener() {
-                    @Override
-                    public void onClick(View view) {
-                        AlertDialog alertDialog = new AlertDialog.Builder(DogsUserActivity.this)
-                                .setIcon(android.R.drawable.ic_dialog_alert)
-                                .setTitle("Сообщение")
-                                .setMessage("Удалить данные о собаке?")
-                                .setPositiveButton("Да", new DialogInterface.OnClickListener() {
-                                    @Override
-                                    public void onClick(DialogInterface dialogInterface, int i) {
-                                        ProgressDialog pd;
-                                        RequestParams params = new RequestParams();
-                                        params.put("id_dog", (int) view.getTag());
-                                        pd = new ProgressDialog(DogsUserActivity.this);
-                                        pd.setTitle("Сообщение");
-                                        pd.setMessage("Подождите, идет обработка данных.");
-                                        // включаем анимацию ожидания
-                                        pd.setIndeterminate(true);
-                                        //не даем исчезнуть диалогу с сообщением
-                                        pd.setCancelable(false);
-                                        pd.show();
-                                        //отправка данных на сервер
-                                        AsyncHttpClient client = new AsyncHttpClient();
-                                        client.post(Service.UrlServer + "/DeleteDogController", params, new AsyncHttpResponseHandler() {
-                                            @Override
-                                            public void onStart() {
-
-                                            }
-
-                                            @Override
-                                            public void onSuccess(int statusCode, cz.msebera.android.httpclient.Header[] headers, byte[] responseBody) {
-                                                pd.dismiss();
-                                                Toast.makeText(getApplicationContext(), "Удаление прошло успешно.", Toast.LENGTH_SHORT).show();
-                                                GetListDogs();
-                                            }
-
-                                            @Override
-                                            public void onFailure(int statusCode, cz.msebera.android.httpclient.Header[] headers, byte[] responseBody, Throwable error) {
-                                                pd.dismiss();
-                                                Toast.makeText(getApplicationContext(), "Произошла ошибка.", Toast.LENGTH_SHORT).show();
-                                            }
-                                        });
-                                    }
-                                })
-                                .setNegativeButton("Нет", new DialogInterface.OnClickListener() {
-                                    @Override
-                                    public void onClick(DialogInterface dialogInterface, int i) {
-
-                                    }
-                                })
-                                .show();
-                    }
-                });
+                fabDelete.setOnClickListener(fabDeleteOnClickListener);
             }else{
                 fabEdit.setVisibility(View.GONE);
                 fabDelete.setVisibility(View.GONE);

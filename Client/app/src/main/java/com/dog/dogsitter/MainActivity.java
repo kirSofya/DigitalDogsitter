@@ -45,6 +45,104 @@ public class MainActivity extends AppCompatActivity {
     TableRow TableRowSignIn, TableRowReg, TableRowFindDogsitters, TableRowData, TableRowMyDogs, TableRowMyArticles, TableRowArticles;
     Button ButtonSignIn, ButtonReg, ButtonDogsitters, ButtonData, ButtonMyDogs, ButtonMyArticles, ButtonArticles, ButtonMap, ButtonOut;
     TextView TextViewUserStatus;
+
+    View.OnClickListener ButtonSignInOnClickListener = new View.OnClickListener() {
+        @Override
+        public void onClick(View view) {
+            Intent intent = new Intent(MainActivity.this, RegSignInActivity.class);
+            intent.putExtra("Oper", 2);
+            startActivity(intent);
+        }
+    };
+
+    View.OnClickListener ButtonRegOnClickListener = new View.OnClickListener() {
+        @Override
+        public void onClick(View view) {
+            Intent intent = new Intent(MainActivity.this, RegSignInActivity.class);
+            intent.putExtra("Oper", 1);
+            startActivity(intent);
+        }
+    };
+
+    View.OnClickListener ButtonDataOnClickListener = new View.OnClickListener() {
+        @Override
+        public void onClick(View view) {
+            Intent intent = new Intent(MainActivity.this, DataUserActivity.class);
+            startActivity(intent);
+        }
+    };
+
+    View.OnClickListener ButtonMyDogsOnClickListener = new View.OnClickListener() {
+        @Override
+        public void onClick(View view) {
+            Service.FlagUpdate=true;
+            Intent intent = new Intent(MainActivity.this, DogsUserActivity.class);
+            intent.putExtra("IdUser", Service.IdUser);
+            startActivity(intent);
+        }
+    };
+
+    View.OnClickListener ButtonMyArticlesOnClickListener = new View.OnClickListener() {
+        @Override
+        public void onClick(View view) {
+            Service.FlagUpdate=true;
+            Intent intent = new Intent(MainActivity.this, ArticlesUserActivity.class);
+            startActivity(intent);
+        }
+    };
+
+    View.OnClickListener ButtonArticlesOnClickListener = new View.OnClickListener() {
+        @Override
+        public void onClick(View view) {
+            Intent intent = new Intent(MainActivity.this, ArticlesActivity.class);
+            startActivity(intent);
+        }
+    };
+
+    View.OnClickListener ButtonDogsittersOnClickListener = new View.OnClickListener() {
+        @Override
+        public void onClick(View view) {
+            Service.FlagUpdate=false;
+            Intent intent = new Intent(MainActivity.this, DogsittersActivity.class);
+            startActivity(intent);
+        }
+    };
+
+    View.OnClickListener ButtonMapOnClickListener = new View.OnClickListener() {
+        @Override
+        public void onClick(View view) {
+            Intent intent = new Intent(MainActivity.this, MapActivity.class);
+            startActivity(intent);
+        }
+    };
+
+    View.OnClickListener ButtonOutOnClickListener = new View.OnClickListener() {
+        DialogInterface.OnClickListener AlertDialogPositiveButtonListener = new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialogInterface, int i) {
+                finish();
+            }
+        };
+
+        DialogInterface.OnClickListener AlertDialogNegativeButtonListener = new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialogInterface, int i) {
+
+            }
+        };
+
+        @Override
+        public void onClick(View view) {
+            AlertDialog alertDialog = new AlertDialog.Builder(MainActivity.this)
+                    .setIcon(android.R.drawable.ic_dialog_alert)
+                    .setTitle("Сообщение")
+                    .setMessage("Закрыть приложение?")
+                    .setPositiveButton("Да", AlertDialogPositiveButtonListener)
+                    .setNegativeButton("Нет", AlertDialogNegativeButtonListener)
+                    .show();
+        }
+    };
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -100,98 +198,23 @@ public class MainActivity extends AppCompatActivity {
         imageLogo.setLayoutParams(params);
         imageLogo.setImageBitmap(bm);
         //нажата кнопка 'Авторизация'
-        ButtonSignIn.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                Intent intent = new Intent(MainActivity.this, RegSignInActivity.class);
-                intent.putExtra("Oper", 2);
-                startActivity(intent);
-            }
-        });
+        ButtonSignIn.setOnClickListener(ButtonSignInOnClickListener);
         //нажата кнопка 'Регистрация'
-        ButtonReg.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                Intent intent = new Intent(MainActivity.this, RegSignInActivity.class);
-                intent.putExtra("Oper", 1);
-                startActivity(intent);
-            }
-        });
+        ButtonReg.setOnClickListener(ButtonRegOnClickListener);
         //нажата кнопка 'Личные данные'
-        ButtonData.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                Intent intent = new Intent(MainActivity.this, DataUserActivity.class);
-                startActivity(intent);
-            }
-        });
+        ButtonData.setOnClickListener(ButtonDataOnClickListener);
         //нажата кнопка 'Мои собаки'
-        ButtonMyDogs.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                Service.FlagUpdate=true;
-                Intent intent = new Intent(MainActivity.this, DogsUserActivity.class);
-                intent.putExtra("IdUser", Service.IdUser);
-                startActivity(intent);
-            }
-        });
+        ButtonMyDogs.setOnClickListener(ButtonMyDogsOnClickListener);
         //нажата кнопка 'Мои статьи'
-        ButtonMyArticles.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                Service.FlagUpdate=true;
-                Intent intent = new Intent(MainActivity.this, ArticlesUserActivity.class);
-                startActivity(intent);
-            }
-        });
+        ButtonMyArticles.setOnClickListener(ButtonMyArticlesOnClickListener);
         //нажата кнопка 'Статьи'
-        ButtonArticles.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                Intent intent = new Intent(MainActivity.this, ArticlesActivity.class);
-                startActivity(intent);
-            }
-        });
+        ButtonArticles.setOnClickListener(ButtonArticlesOnClickListener);
         //нажата кнопка 'Найти догситтеров'
-        ButtonDogsitters.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                Service.FlagUpdate=false;
-                Intent intent = new Intent(MainActivity.this, DogsittersActivity.class);
-                startActivity(intent);
-            }
-        });
+        ButtonDogsitters.setOnClickListener(ButtonDogsittersOnClickListener);
         //нажата кнопка 'Карта'
-        ButtonMap.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                Intent intent = new Intent(MainActivity.this, MapActivity.class);
-                startActivity(intent);
-            }
-        });
+        ButtonMap.setOnClickListener(ButtonMapOnClickListener);
         //нажата кнопка 'Выход'
-        ButtonOut.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                AlertDialog alertDialog = new AlertDialog.Builder(MainActivity.this)
-                        .setIcon(android.R.drawable.ic_dialog_alert)
-                        .setTitle("Сообщение")
-                        .setMessage("Закрыть приложение?")
-                        .setPositiveButton("Да", new DialogInterface.OnClickListener() {
-                            @Override
-                            public void onClick(DialogInterface dialogInterface, int i) {
-                                finish();
-                            }
-                        })
-                        .setNegativeButton("Нет", new DialogInterface.OnClickListener() {
-                            @Override
-                            public void onClick(DialogInterface dialogInterface, int i) {
-
-                            }
-                        })
-                        .show();
-            }
-        });
+        ButtonOut.setOnClickListener(ButtonOutOnClickListener);
         MapKitFactory.setApiKey("8171fba7-1917-4438-92d9-0dd32ad0a9ab");
     }
     //событие при активизации активности

@@ -77,6 +77,88 @@ public class MapActivity extends AppCompatActivity implements ActivityCompat.OnR
     int CountQuery;//счетчик запросов
     int IdObject;
 
+    LocationListener MapKitLocationListener = new LocationListener() {
+        @Override
+        public void onLocationUpdated(@NonNull com.yandex.mapkit.location.Location location) {
+            MyLng=location.getPosition().getLongitude();
+            MyLat=location.getPosition().getLatitude();
+            if(MyLng!=0 && MyLat!=0 && FlagPosition){
+                Map.getMap().move(
+                        new CameraPosition(new Point(MyLat, MyLng), 14.0f, 0.0f, 0.0f),
+                        new Animation(Animation.Type.SMOOTH, 0),
+                        null);
+                FlagPosition=false;
+            }
+        }
+
+        @Override
+        public void onLocationStatusUpdated(@NonNull LocationStatus locationStatus) {
+        }
+    };
+
+    View.OnClickListener FabMyLocationOnClickListener = new View.OnClickListener() {
+        @Override
+        public void onClick(View view) {
+            Map.getMap().move(
+                    new CameraPosition(new Point(MyLat, MyLng), 14.0f, 0.0f, 0.0f),
+                    new Animation(Animation.Type.SMOOTH, 0),
+                    null);
+        }
+    };
+
+    View.OnClickListener FabSearchOnClickListener = new View.OnClickListener() {
+        @Override
+        public void onClick(View view) {
+            Map.getMap().getMapObjects().clear();//удаляем все маркеры
+            //узнаем координаты текущего центра на карте
+            float center_x=Map.getMapWindow().width() / 2f;
+            float center_y=Map.getMapWindow().height() / 2f;
+            ScreenPoint point = new ScreenPoint(center_x, center_y);
+            Point point_m=Map.getMapWindow().screenToWorld(point);
+            NowLat=point_m.getLatitude();
+            NowLng=point_m.getLongitude();
+            ListObjects=new ArrayList<>();
+            CountQuery=0;IdObject=0;
+            pd = new ProgressDialog(MapActivity.this);
+            pd.setTitle("Сообщение");
+            pd.setMessage("Подождите, идет обработка данных.");
+            // включаем анимацию ожидания
+            pd.setIndeterminate(true);
+            //не даем исчезнуть диалогу с сообщением
+            pd.setCancelable(false);
+            pd.show();
+            SearchObjectsMap("груминг-салон, ветеринар");
+        }
+    };
+
+    JsonHttpResponseHandler GetFavoritePlacesControllerPost = new JsonHttpResponseHandler() {
+        @Override
+        public void onSuccess(int statusCode, Header[] headers, JSONObject response) {
+            try {
+                JSONArray array=response.getJSONArray("array");
+                Service.ListFavoritePlaces=new ArrayList<>();
+                FavoritePlace data;
+                for(int i=0;i<array.length();i++){
+                    JSONObject obj=array.getJSONObject(i);
+                    data=new FavoritePlace();
+                    data.Lat=obj.getDouble("lat");
+                    data.Lng=obj.getDouble("lng");
+                    Service.ListFavoritePlaces.add(data);
+                }
+            } catch (JSONException e) {
+                e.printStackTrace();
+            }
+            pd.dismiss();
+        }
+
+        @Override
+        public void onFailure(int statusCode, Header[] headers, String res, Throwable t) {
+            pd.dismiss();
+            Toast toast = Toast.makeText(getApplicationContext(), "Произошла ошибка.", Toast.LENGTH_SHORT);
+            toast.show();
+        }
+    };
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -99,59 +181,11 @@ public class MapActivity extends AppCompatActivity implements ActivityCompat.OnR
         }
         getLocation();
         MapKit = MapKitFactory.getInstance();
-        MapKit.createLocationManager().subscribeForLocationUpdates(0,0, 0, true, FilteringMode.ON, new LocationListener() {
-            @Override
-            public void onLocationUpdated(@NonNull com.yandex.mapkit.location.Location location) {
-                MyLng=location.getPosition().getLongitude();
-                MyLat=location.getPosition().getLatitude();
-                if(MyLng!=0 && MyLat!=0 && FlagPosition){
-                    Map.getMap().move(
-                            new CameraPosition(new Point(MyLat, MyLng), 14.0f, 0.0f, 0.0f),
-                            new Animation(Animation.Type.SMOOTH, 0),
-                            null);
-                    FlagPosition=false;
-                }
-            }
-
-            @Override
-            public void onLocationStatusUpdated(@NonNull LocationStatus locationStatus) {
-            }
-        });
+        MapKit.createLocationManager().subscribeForLocationUpdates(0,0, 0, true, FilteringMode.ON, MapKitLocationListener);
         //определение моего местоположения
-        FabMyLocation.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                Map.getMap().move(
-                        new CameraPosition(new Point(MyLat, MyLng), 14.0f, 0.0f, 0.0f),
-                        new Animation(Animation.Type.SMOOTH, 0),
-                        null);
-            }
-        });
+        FabMyLocation.setOnClickListener(FabMyLocationOnClickListener);
         //поиск объектов
-        FabSearch.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                Map.getMap().getMapObjects().clear();//удаляем все маркеры
-                //узнаем координаты текущего центра на карте
-                float center_x=Map.getMapWindow().width() / 2f;
-                float center_y=Map.getMapWindow().height() / 2f;
-                ScreenPoint point = new ScreenPoint(center_x, center_y);
-                Point point_m=Map.getMapWindow().screenToWorld(point);
-                NowLat=point_m.getLatitude();
-                NowLng=point_m.getLongitude();
-                ListObjects=new ArrayList<>();
-                CountQuery=0;IdObject=0;
-                pd = new ProgressDialog(MapActivity.this);
-                pd.setTitle("Сообщение");
-                pd.setMessage("Подождите, идет обработка данных.");
-                // включаем анимацию ожидания
-                pd.setIndeterminate(true);
-                //не даем исчезнуть диалогу с сообщением
-                pd.setCancelable(false);
-                pd.show();
-                SearchObjectsMap("груминг-салон, ветеринар");
-            }
-        });
+        FabSearch.setOnClickListener(FabSearchOnClickListener);
         if(Service.IdUser>0)GetFavoritePlaces();
     }
     //загрузка координат избранных мест
@@ -168,33 +202,7 @@ public class MapActivity extends AppCompatActivity implements ActivityCompat.OnR
         pd.show();
         //отправка данных на сервер
         AsyncHttpClient client = new AsyncHttpClient();
-        client.post(Service.UrlServer+"/GetFavoritePlacesController", params, new JsonHttpResponseHandler() {
-            @Override
-            public void onSuccess(int statusCode, Header[] headers, JSONObject response) {
-                try {
-                    JSONArray array=response.getJSONArray("array");
-                    Service.ListFavoritePlaces=new ArrayList<>();
-                    FavoritePlace data;
-                    for(int i=0;i<array.length();i++){
-                        JSONObject obj=array.getJSONObject(i);
-                        data=new FavoritePlace();
-                        data.Lat=obj.getDouble("lat");
-                        data.Lng=obj.getDouble("lng");
-                        Service.ListFavoritePlaces.add(data);
-                    }
-                } catch (JSONException e) {
-                    e.printStackTrace();
-                }
-                pd.dismiss();
-            }
-
-            @Override
-            public void onFailure(int statusCode, Header[] headers, String res, Throwable t) {
-                pd.dismiss();
-                Toast toast = Toast.makeText(getApplicationContext(), "Произошла ошибка.", Toast.LENGTH_SHORT);
-                toast.show();
-            }
-        });
+        client.post(Service.UrlServer+"/GetFavoritePlacesController", params, GetFavoritePlacesControllerPost);
     }
     //событие при активизации активности
     @Override
@@ -246,6 +254,66 @@ public class MapActivity extends AppCompatActivity implements ActivityCompat.OnR
     }
     //подготовка
     List<PlacemarkMapObject> ListMarkers;
+
+    AsyncHttpResponseHandler SearchMapsYandexRuV1Get = new AsyncHttpResponseHandler() {
+        @Override
+        public void onStart() {
+
+        }
+
+        @Override
+        public void onSuccess(int statusCode, cz.msebera.android.httpclient.Header[] headers, byte[] responseBody) {
+            //получение ответа от сервера
+            String response=new String(responseBody);
+            response=response.trim();
+            DataObject data;
+            CountQuery=CountQuery+1;
+            try {
+                JSONObject obj=new JSONObject(response);
+                JSONArray array=obj.getJSONArray("features");
+                for(int i=0;i<array.length();i++){
+                    data=new DataObject();
+                    obj=array.getJSONObject(i);
+                    JSONObject properties=obj.getJSONObject("properties");
+                    JSONObject meta_data=properties.getJSONObject("CompanyMetaData");
+                    String description=meta_data.getString("name")+"\nАдрес: "+meta_data.getString("address")+"\n";
+                    if(!meta_data.isNull("Phones")) {
+                        JSONArray phones = meta_data.getJSONArray("Phones");
+                        if (phones.length() > 0) {
+                            description += "Телефоны: ";
+                            for (int j = 0; j < phones.length(); j++) {
+                                JSONObject phone = phones.getJSONObject(j);
+                                description += phone.getString("formatted");
+                                if (j < phones.length() - 1) description += ", ";
+                            }
+                        }
+                    }
+                    data.Id=IdObject;IdObject++;
+                    data.Description=description;
+                    JSONObject geometry=obj.getJSONObject("geometry");
+                    if(geometry.getString("type").equals("Point")){
+                        JSONArray coordinates=geometry.getJSONArray("coordinates");
+                        data.Lng=coordinates.getDouble(0);
+                        data.Lat=coordinates.getDouble(1);
+                    }
+                    data.Category=CountQuery;
+                    data.Favorite=CheckFavoritePlace(data);
+                    ListObjects.add(data);
+                }
+            } catch (JSONException e) {
+                throw new RuntimeException(e);
+            }
+            if(CountQuery==1)SearchObjectsMap("ветеринар");
+            if(CountQuery==2)SearchObjectsMap("парк");
+            if(CountQuery==3)ShowObjectMap();
+        }
+        @Override
+        public void onFailure(int statusCode, cz.msebera.android.httpclient.Header[] headers, byte[] responseBody, Throwable error) {
+            pd.dismiss();
+            System.out.println("ERROR="+error.toString());
+            Toast.makeText(getApplicationContext(),"Произошла ошибка.", Toast.LENGTH_SHORT).show();
+        }
+    };
     //поиск объектов на карте
     private void SearchObjectsMap(String name_object){
         RequestParams params = new RequestParams();
@@ -258,65 +326,7 @@ public class MapActivity extends AppCompatActivity implements ActivityCompat.OnR
         params.put("spn", "0.552069,0.400552");
         //отправка данных на сервер
         AsyncHttpClient client = new AsyncHttpClient();
-        client.get("https://search-maps.yandex.ru/v1/", params, new AsyncHttpResponseHandler() {
-            @Override
-            public void onStart() {
-
-            }
-
-            @Override
-            public void onSuccess(int statusCode, cz.msebera.android.httpclient.Header[] headers, byte[] responseBody) {
-                //получение ответа от сервера
-                String response=new String(responseBody);
-                response=response.trim();
-                DataObject data;
-                CountQuery=CountQuery+1;
-                try {
-                    JSONObject obj=new JSONObject(response);
-                    JSONArray array=obj.getJSONArray("features");
-                    for(int i=0;i<array.length();i++){
-                        data=new DataObject();
-                        obj=array.getJSONObject(i);
-                        JSONObject properties=obj.getJSONObject("properties");
-                        JSONObject meta_data=properties.getJSONObject("CompanyMetaData");
-                        String description=meta_data.getString("name")+"\nАдрес: "+meta_data.getString("address")+"\n";
-                        if(!meta_data.isNull("Phones")) {
-                            JSONArray phones = meta_data.getJSONArray("Phones");
-                            if (phones.length() > 0) {
-                                description += "Телефоны: ";
-                                for (int j = 0; j < phones.length(); j++) {
-                                    JSONObject phone = phones.getJSONObject(j);
-                                    description += phone.getString("formatted");
-                                    if (j < phones.length() - 1) description += ", ";
-                                }
-                            }
-                        }
-                        data.Id=IdObject;IdObject++;
-                        data.Description=description;
-                        JSONObject geometry=obj.getJSONObject("geometry");
-                        if(geometry.getString("type").equals("Point")){
-                            JSONArray coordinates=geometry.getJSONArray("coordinates");
-                            data.Lng=coordinates.getDouble(0);
-                            data.Lat=coordinates.getDouble(1);
-                        }
-                        data.Category=CountQuery;
-                        data.Favorite=CheckFavoritePlace(data);
-                        ListObjects.add(data);
-                    }
-                } catch (JSONException e) {
-                    throw new RuntimeException(e);
-                }
-                if(CountQuery==1)SearchObjectsMap("ветеринар");
-                if(CountQuery==2)SearchObjectsMap("парк");
-                if(CountQuery==3)ShowObjectMap();
-            }
-            @Override
-            public void onFailure(int statusCode, cz.msebera.android.httpclient.Header[] headers, byte[] responseBody, Throwable error) {
-                pd.dismiss();
-                System.out.println("ERROR="+error.toString());
-                Toast.makeText(getApplicationContext(),"Произошла ошибка.", Toast.LENGTH_SHORT).show();
-            }
-        });
+        client.get("https://search-maps.yandex.ru/v1/", params, SearchMapsYandexRuV1Get);
     }
     DataObject DataObj;
     //вывод на карту объектов
@@ -329,6 +339,84 @@ public class MapActivity extends AppCompatActivity implements ActivityCompat.OnR
         pd.dismiss();
     }
     private MapObjectTapListener MarkerMapObjectTapListener = new MapObjectTapListener(){
+        Button buttonFav;
+        AsyncHttpResponseHandler DoFavoritePlaceControllerGet = new AsyncHttpResponseHandler() {
+            @Override
+            public void onStart() {
+
+            }
+            @Override
+            public void onSuccess(int statusCode, Header[] headers, byte[] responseBody) {
+                //Map.getMap().getMapObjects().clear();//удаляем все маркеры
+                ShowIconsMap();
+                pd.dismiss();
+            }
+
+            @Override
+            public void onFailure(int statusCode, Header[] headers, byte[] responseBody, Throwable error) {
+                pd.dismiss();
+                System.out.println("ERROR="+error.toString());
+                Toast toast = Toast.makeText(getApplicationContext(), "Произошла ошибка.", Toast.LENGTH_SHORT);
+                toast.show();
+            }
+        };
+
+        View.OnClickListener ButtonFavOnClickListener = new View.OnClickListener() {
+//            Button buttonFav;
+
+            @Override
+            public void onClick(View view) {
+                DataObj.Favorite=!DataObj.Favorite;
+                for(int k=0;k<ListObjects.size();k++)
+                    if(ListObjects.get(k).Id==DataObj.Id){
+                        ListObjects.set(k, DataObj);
+                        break;
+                    }
+                //если убираем объект из избранного, то удаляем его из списка
+                if(DataObj.Favorite==false) {
+                    for (int k = 0; k < Service.ListFavoritePlaces.size(); k++)
+                        if (DataObj.Lat == Service.ListFavoritePlaces.get(k).Lat && DataObj.Lng == Service.ListFavoritePlaces.get(k).Lng) {
+                            Service.ListFavoritePlaces.remove(k);
+                            break;
+                        }
+                    buttonFav.setText("В избранное");
+                }
+                //если добавление избранного
+                if(DataObj.Favorite){
+                    FavoritePlace data_coord=new FavoritePlace();
+                    data_coord.Lat=DataObj.Lat;
+                    data_coord.Lng=DataObj.Lng;
+                    Service.ListFavoritePlaces.add(data_coord);
+                    buttonFav.setText("Удалить из избранного");
+                }
+                //обновляем данные по избранным в бд
+                ProgressDialog pd;
+                RequestParams params = new RequestParams();
+                params.put("favorite", DataObj.Favorite);
+                params.put("id_user", Service.IdUser);
+                params.put("lat", DataObj.Lat);
+                params.put("lng", DataObj.Lng);
+                pd = new ProgressDialog(MapActivity.this);
+                pd.setTitle("Сообщение");
+                pd.setMessage("Подождите, идет подготовка данных.");
+                // включаем анимацию ожидания
+                pd.setIndeterminate(true);
+                //не даем исчезнуть диалогу с сообщением
+                pd.setCancelable(false);
+                pd.show();
+                //отправка данных на сервер
+                AsyncHttpClient client = new AsyncHttpClient();
+                client.get(Service.UrlServer+"/DoFavoritePlaceController", params, DoFavoritePlaceControllerGet);
+            }
+        };
+
+        DialogInterface.OnClickListener aDialogBuilderPositiveButtonListener = new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialogInterface, int i) {
+
+            }
+        };
+
         @Override
         public boolean onMapObjectTap(@NonNull MapObject mapObject, @NonNull Point point) {
             // Обработка нажатия на маркер
@@ -342,7 +430,7 @@ public class MapActivity extends AppCompatActivity implements ActivityCompat.OnR
                     View modalView = li.inflate(R.layout.modal_data_object_map, null);
                     TableRow tableRow1;
                     TextView textData;
-                    Button buttonFav;
+//                    Button buttonFav;
                     tableRow1=modalView.findViewById(R.id.tableRow1ObjectMap);
                     textData=modalView.findViewById(R.id.textViewDataObjectMap);
                     buttonFav=modalView.findViewById(R.id.buttonFavObjectMap);
@@ -351,71 +439,7 @@ public class MapActivity extends AppCompatActivity implements ActivityCompat.OnR
                         if (DataObj.Favorite) buttonFav.setText("Удалить из избранного");
                         else buttonFav.setText("В избранное");
                         tableRow1.setVisibility(View.VISIBLE);
-                        buttonFav.setOnClickListener(new View.OnClickListener() {
-                            @Override
-                            public void onClick(View view) {
-                                DataObj.Favorite=!DataObj.Favorite;
-                                for(int k=0;k<ListObjects.size();k++)
-                                    if(ListObjects.get(k).Id==DataObj.Id){
-                                        ListObjects.set(k, DataObj);
-                                        break;
-                                    }
-                                //если убираем объект из избранного, то удаляем его из списка
-                                if(DataObj.Favorite==false) {
-                                    for (int k = 0; k < Service.ListFavoritePlaces.size(); k++)
-                                        if (DataObj.Lat == Service.ListFavoritePlaces.get(k).Lat && DataObj.Lng == Service.ListFavoritePlaces.get(k).Lng) {
-                                            Service.ListFavoritePlaces.remove(k);
-                                            break;
-                                        }
-                                    buttonFav.setText("В избранное");
-                                }
-                                //если добавление избранного
-                                if(DataObj.Favorite){
-                                    FavoritePlace data_coord=new FavoritePlace();
-                                    data_coord.Lat=DataObj.Lat;
-                                    data_coord.Lng=DataObj.Lng;
-                                    Service.ListFavoritePlaces.add(data_coord);
-                                    buttonFav.setText("Удалить из избранного");
-                                }
-                                //обновляем данные по избранным в бд
-                                ProgressDialog pd;
-                                RequestParams params = new RequestParams();
-                                params.put("favorite", DataObj.Favorite);
-                                params.put("id_user", Service.IdUser);
-                                params.put("lat", DataObj.Lat);
-                                params.put("lng", DataObj.Lng);
-                                pd = new ProgressDialog(MapActivity.this);
-                                pd.setTitle("Сообщение");
-                                pd.setMessage("Подождите, идет подготовка данных.");
-                                // включаем анимацию ожидания
-                                pd.setIndeterminate(true);
-                                //не даем исчезнуть диалогу с сообщением
-                                pd.setCancelable(false);
-                                pd.show();
-                                //отправка данных на сервер
-                                AsyncHttpClient client = new AsyncHttpClient();
-                                client.get(Service.UrlServer+"/DoFavoritePlaceController", params, new AsyncHttpResponseHandler() {
-                                    @Override
-                                    public void onStart() {
-
-                                    }
-                                    @Override
-                                    public void onSuccess(int statusCode, Header[] headers, byte[] responseBody) {
-                                        //Map.getMap().getMapObjects().clear();//удаляем все маркеры
-                                        ShowIconsMap();
-                                        pd.dismiss();
-                                    }
-
-                                    @Override
-                                    public void onFailure(int statusCode, Header[] headers, byte[] responseBody, Throwable error) {
-                                        pd.dismiss();
-                                        System.out.println("ERROR="+error.toString());
-                                        Toast toast = Toast.makeText(getApplicationContext(), "Произошла ошибка.", Toast.LENGTH_SHORT);
-                                        toast.show();
-                                    }
-                                });
-                            }
-                        });
+                        buttonFav.setOnClickListener(ButtonFavOnClickListener);
                     }else tableRow1.setVisibility(View.GONE);
                     //Создаем AlertDialog
                     AlertDialog.Builder aDialogBuilder = new AlertDialog.Builder(MapActivity.this);
@@ -423,12 +447,7 @@ public class MapActivity extends AppCompatActivity implements ActivityCompat.OnR
                     aDialogBuilder.setView(modalView);
                     aDialogBuilder.setCancelable(false);
                     aDialogBuilder.setPositiveButton("Закрыть",
-                            new DialogInterface.OnClickListener() {
-                                @Override
-                                public void onClick(DialogInterface dialogInterface, int i) {
-
-                                }
-                            });
+                            aDialogBuilderPositiveButtonListener);
                     //создаем AlertDialog
                     modal_data = aDialogBuilder.create();
                     //и отображаем его
